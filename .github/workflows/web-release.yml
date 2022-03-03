@@ -1,22 +1,22 @@
 on:
-  pull_request:
-    paths:
-      - "web/**"
-      - ".github/**"
+  release:
+    types: [published]
 jobs:
-  build_and_preview_web:
-    if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+  build_and_deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - run: npm install
         working-directory: ./web
-      - run: cp .env.dev .env.local
+      - run: cp .env.prod .env.local
         working-directory: ./web
       - run: npm run build
         working-directory: ./web
+        env:
+          GENERATE_SOURCEMAP: "false"
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_DEV_SERVICE_ACCOUNT }}"
-          projectId: "${{ secrets.FIREBASE_DEV_PROJECT_ID }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_PROD_SERVICE_ACCOUNT }}"
+          channelId: live
+          projectId: "${{ secrets.FIREBASE_PROD_PROJECT_ID }}"
