@@ -11,6 +11,9 @@
     ],
     "eth/**/*.{sol,js}": [
       "prettier --write"
+    ],
+    ".github/**/*.yml": [
+      "prettier --write"
     ]
   },
   "husky": {

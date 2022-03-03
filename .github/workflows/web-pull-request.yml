@@ -1,0 +1,24 @@
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/**"
+jobs:
+  build_and_preview_web:
+    if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+        working-directory: ./web
+      - run: cp .env.lgtm-dev .env.local
+        working-directory: ./web
+      - run: npm run build
+        working-directory: ./web
+# TODO
+#      - name: Deploy Preview
+#        uses: FirebaseExtended/action-hosting-deploy@v0
+#        with:
+#          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+#          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+#          projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'
