@@ -1,0 +1,17 @@
+on:
+  pull_request:
+    paths:
+      - "eth/**"
+      - ".github/**"
+jobs:
+  build_and_test_eth:
+    if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+        working-directory: ./eth
+      - run: npx hardhat test
+        working-directory: ./eth
+        env:
+          REPORT_GAS: "true"
