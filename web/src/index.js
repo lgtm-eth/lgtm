@@ -6,25 +6,7 @@ import theme from "./theme";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import store from "./store/store";
-import { Box, CircularProgress } from "@mui/material";
-
-function PlaceholderApp() {
-  // TODO: cut this after placeholder release
-  return (
-    <Box sx={{ position: "relative", height: "100vh", width: "100vw" }}>
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    </Box>
-  );
-}
+import App from "./App";
 
 ReactDOM.render(
   <React.StrictMode>
@@ -32,8 +14,7 @@ ReactDOM.render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter>
-          {/* TODO: <App />*/}
-          <PlaceholderApp />
+          <App />
         </BrowserRouter>
       </ThemeProvider>
     </Provider>
