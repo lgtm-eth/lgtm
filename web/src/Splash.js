@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useSpring, animated, easings } from "react-spring";
 import { useCenter, useDebounce } from "./hooks";
 import WordmarkLGTM from "./WordmarkLGTM.svg";
@@ -98,20 +98,13 @@ function Eye({ clientX = 0, clientY = 0, blinkController = (blinkApi) => {} }) {
   );
 }
 
-//
-// function EyelidEllipse(props) {
-//   return (
-//     <ellipse {...props} />
-//   );
-// }
-
 function BurnThrough({ clientX = 0, clientY = 0 }) {
   return (
     <svg
       style={{ position: "absolute" }}
       preserveAspectRatio="none"
-      width="100vw"
-      height="100vh"
+      width="100%"
+      height="100%"
       fill="none"
     >
       <radialGradient id="viewHoleGradient">
@@ -119,6 +112,18 @@ function BurnThrough({ clientX = 0, clientY = 0 }) {
         <stop offset="30%" stopColor="black" />
         <stop offset="100%" stopColor="white" />
       </radialGradient>
+      <linearGradient id="scanGradient" x2="0" y2="100%">
+        <stop offset="0%" stopColor="transparent" />
+        <stop offset="50%" stopColor="skyblue" />
+        <stop offset="100%" stopColor="transparent" />
+      </linearGradient>
+      <linearGradient id="brownColumnGradient">
+        <stop offset="0%" stopColor="black" />
+        {/*<stop offset="25%" stopColor="brown"/>*/}
+        <stop offset="50%" stopColor="brown" />
+        {/*<stop offset="75%" stopColor="brown"/>*/}
+        <stop offset="100%" stopColor="black" />
+      </linearGradient>
       <mask id="viewHole">
         <rect fill="white" width="100%" height="100%" />
         <circle
@@ -128,7 +133,38 @@ function BurnThrough({ clientX = 0, clientY = 0 }) {
           fill="url('#viewHoleGradient')"
         />
       </mask>
+      <mask id="negativeViewHole">
+        <rect fill="white" width="100%" height="100%" />
+        <rect fill="black" width="100%" height="100%" mask="url(#viewHole)" />
+      </mask>
       <rect fill="#1B5E20" width="100%" height="100%" mask="url(#viewHole)" />
+      <rect
+        fill="url(#brownColumnGradient"
+        fillOpacity="0.2"
+        width={200}
+        height={200}
+        x={clientX - 100}
+        y={clientY - 100}
+        mask="url(#negativeViewHole)"
+      />
+      <rect
+        fill="url(#scanGradient)"
+        fillOpacity="0.9"
+        y={clientY - 100 - 30}
+        x={clientX - 100}
+        width={200}
+        height={60}
+        mask="url(#negativeViewHole)"
+      >
+        <animate
+          attributeName="y"
+          dur="3s"
+          values={`${clientY - 100 - 30};${clientY - 100 + 200 - 30};${
+            clientY - 100 - 30
+          }`}
+          repeatCount="indefinite"
+        />
+      </rect>
     </svg>
   );
 }
@@ -139,6 +175,11 @@ const BYTES = _.times(10000)
   .join("");
 export default function Splash() {
   let [eyes, setEyes] = useState({ clientX: 0, clientY: 0 });
+  // eslint-disable-next-line
+  let updateEyes = useCallback(
+    _.throttle(setEyes, 5, { leading: true, trailing: true }),
+    [setEyes]
+  );
   return (
     <div
       style={{
@@ -149,14 +190,14 @@ export default function Splash() {
         touchAction: "none",
       }}
       // onTouchStart={(e) => e.preventDefault()}
-      onTouchMove={(e) => {
-        setEyes({
+      onTouchMove={(e) =>
+        updateEyes({
           clientX: e.touches[0].clientX,
           clientY: e.touches[0].clientY,
-        });
-      }}
+        })
+      }
       onMouseMove={(e) =>
-        setEyes({
+        updateEyes({
           clientX: e.clientX,
           clientY: e.clientY,
         })
