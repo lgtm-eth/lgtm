@@ -11,7 +11,7 @@ function App() {
       <Route path="/" element={<Splash />} />
       {/* TODO: */}
       {/*<Route path="/" element={<Home />} />*/}
-      {/*<Route path="/address/:address" element={<Address />} />*/}
+      <Route path="/address/:address" element={<Address />} />
       {/*<Route path="/project/:projectId" element={<Project />} />*/}
       {/*<Route path="/reviewer/:reviewerId" element={<Reviewer />} />*/}
       <Route path="*" element={<Splash />} />

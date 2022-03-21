@@ -1,4 +1,4 @@
-import { AppBar, Box, Toolbar } from "@mui/material";
+import { AppBar, Box, Toolbar, useTheme } from "@mui/material";
 import React, { useCallback, useState } from "react";
 // import WalletConnectProvider from "@walletconnect/web3-provider";
 // import Web3Modal from "web3modal";
@@ -80,7 +80,38 @@ import Wordmark from "./Wordmark";
 //   return attemptLogin().catch((err) => console.log(err));
 // }
 
+function Footer() {
+  return (
+    <>
+      <div style={{ width: "85%", marginLeft: "auto", marginRight: "auto" }}>
+        <hr style={{ borderColor: "#333" }} />
+        <div style={{ color: "#999" }}>
+          <p style={{ float: "right" }}>
+            <span>
+              <a
+                style={{ textDecoration: "none", color: "inherit" }}
+                href="/privacy"
+              >
+                Privacy
+              </a>
+            </span>
+            <span style={{ marginLeft: 30 }}>
+              <a
+                style={{ textDecoration: "none", color: "inherit" }}
+                href="/terms"
+              >
+                Terms
+              </a>
+            </span>
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function AppBarLayout({ children }) {
+  let theme = useTheme();
   let [eyes, setEyes] = useState({ clientX: 0, clientY: 0 });
   // eslint-disable-next-line
   let updateEyes = useCallback(
@@ -88,8 +119,13 @@ export default function AppBarLayout({ children }) {
     [setEyes]
   );
   return (
-    <div
-      style={{ paddingTop: 72 }}
+    <Box
+      sx={{
+        paddingTop: "64px",
+        [theme.breakpoints.down("md")]: {
+          paddingTop: "48px",
+        },
+      }}
       onTouchMove={(e) =>
         updateEyes({
           clientX: e.touches[0].clientX,
@@ -115,33 +151,12 @@ export default function AppBarLayout({ children }) {
           {/*</Button>*/}
         </Toolbar>
       </AppBar>
-      <main style={{ minHeight: "100vh" }}>
-        <div style={{ minHeight: "50vh" }}>{children}</div>
-        <div style={{ width: "85%", marginLeft: "auto", marginRight: "auto" }}>
-          <hr style={{ borderColor: "#333" }} />
-          <div style={{ color: "#999" }}>
-            <p style={{ float: "left" }}>© 2022 McCartney, LLC</p>
-            <p style={{ float: "right" }}>
-              <span>
-                <a
-                  style={{ textDecoration: "none", color: "inherit" }}
-                  href="/privacy"
-                >
-                  Privacy
-                </a>
-              </span>
-              <span style={{ marginLeft: 30 }}>
-                <a
-                  style={{ textDecoration: "none", color: "inherit" }}
-                  href="/terms"
-                >
-                  Terms
-                </a>
-              </span>
-            </p>
-          </div>
+      <main>
+        <div style={{ textAlign: "center", minHeight: "100vh" }}>
+          {children}
         </div>
+        <Footer />
       </main>
-    </div>
+    </Box>
   );
 }
