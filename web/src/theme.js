@@ -13,7 +13,13 @@ const theme = createTheme({
       main: "#6D4C41",
     },
   },
+  shape: {
+    borderRadius: 12,
+  },
   typography: {
+    button: {
+      textTransform: "none",
+    },
     h1: {
       fontFamily: "Poppins",
       fontWeight: 600,
