@@ -115,7 +115,33 @@ export default function AppBarLayout({ children }) {
           {/*</Button>*/}
         </Toolbar>
       </AppBar>
-      <main style={{ minHeight: "100vh" }}>{children}</main>
+      <main style={{ minHeight: "100vh" }}>
+        <div style={{ minHeight: "50vh" }}>{children}</div>
+        <div style={{ width: "85%", marginLeft: "auto", marginRight: "auto" }}>
+          <hr style={{ borderColor: "#333" }} />
+          <div style={{ color: "#999" }}>
+            <p style={{ float: "left" }}>© 2022 McCartney, LLC</p>
+            <p style={{ float: "right" }}>
+              <span>
+                <a
+                  style={{ textDecoration: "none", color: "inherit" }}
+                  href="/privacy"
+                >
+                  Privacy
+                </a>
+              </span>
+              <span style={{ marginLeft: 30 }}>
+                <a
+                  style={{ textDecoration: "none", color: "inherit" }}
+                  href="/terms"
+                >
+                  Terms
+                </a>
+              </span>
+            </p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
