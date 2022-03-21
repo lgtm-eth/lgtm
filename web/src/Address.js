@@ -3,6 +3,7 @@ import React from "react";
 import { Navigate, useParams } from "react-router-dom";
 import {
   Box,
+  Button,
   CircularProgress,
   Container,
   Grid,
@@ -12,11 +13,9 @@ import {
 import reviewStatusLG from "./review-status-lg.svg";
 import projectBannerImageUrl from "./coven_banner.png";
 import projectLogoImageUrl from "./coven_logo.png";
+import { Twitter, WebAsset } from "@mui/icons-material";
 
-// TODO: make these dynamic
-const projectName = "Crypto Coven";
-const projectReviewPercentage = 84;
-
+// TODO: make this dynamic
 const INFO = {
   "0x5180db8F5c931aaE63c74266b211F580155ecac8": {
     redirect: {
@@ -25,10 +24,12 @@ const INFO = {
   },
   "cryptocoven.eth": {
     contract: {
-      projectName,
+      projectName: "Crypto Coven",
+      projectReviewPercentage: 84,
+      projectUrl: "https://cryptocoven.xyz",
+      projectTwitterName: "crypto_coven",
       projectBannerImageUrl,
       projectLogoImageUrl,
-      projectReviewPercentage,
     },
   },
 };
@@ -66,11 +67,11 @@ function ReviewSummary({ percentage, sx }) {
         overflow: "hidden",
         height: 72,
         [theme.breakpoints.down("md")]: {
+          ...sx[theme.breakpoints.down("md")],
           borderRadius: "18px",
           height: 36,
         },
         width: "auto",
-        // width: 240,
         textAlign: "center",
       }}
     >
@@ -136,8 +137,9 @@ function ContractAddress({ address }) {
     projectBannerImageUrl,
     projectLogoImageUrl,
     projectReviewPercentage,
+    projectUrl,
+    projectTwitterName,
   } = contract;
-  console.log("Contract", contract);
   return (
     <AppBarLayout>
       <Box sx={{ position: "relative", textAlign: "center", zIndex: -1 }}>
@@ -146,10 +148,10 @@ function ContractAddress({ address }) {
           src={projectBannerImageUrl}
           sx={{
             width: "100vw",
-            height: "16.5vw",
+            height: "20vw",
             [theme.breakpoints.down("md")]: {
               width: "100vw",
-              height: "30.5vw",
+              height: "50vw",
             },
             // width: "100%",
             // height: "600px",
@@ -163,10 +165,10 @@ function ContractAddress({ address }) {
         <Box
           sx={{
             width: "100vw",
-            height: "16.5vw",
+            height: "20vw",
             [theme.breakpoints.down("md")]: {
               width: "100vw",
-              height: "30.5vw",
+              height: "50vw",
             },
             background:
               "radial-gradient(circle at 0%, #fff, transparent 80%, transparent 100%)",
@@ -179,7 +181,10 @@ function ContractAddress({ address }) {
           sx={{
             position: "absolute",
             bottom: 18,
-            left: 32,
+            left: 24,
+            [theme.breakpoints.down("md")]: {
+              left: 16,
+            },
           }}
           status="LG"
           percentage={projectReviewPercentage}
@@ -210,6 +215,7 @@ function ContractAddress({ address }) {
         variant="h1"
         sx={{
           textAlign: "center",
+          fontSize: "40px",
           [theme.breakpoints.down("md")]: {
             fontSize: "32px",
           },
@@ -217,20 +223,48 @@ function ContractAddress({ address }) {
       >
         {projectName}
       </Typography>
+      <Box
+        sx={{
+          textAlign: "left",
+          p: 1,
+          display: "inline-block",
+          maxWidth: "250px",
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        <Button
+          variant="text"
+          size="small"
+          color="secondary"
+          sx={{ mb: 0.25 }}
+          href={projectUrl}
+          startIcon={<WebAsset />}
+        >
+          {projectUrl}
+        </Button>
+        <br />
+        <Button
+          variant="text"
+          size="small"
+          color="secondary"
+          href={`https://twitter.com/${projectTwitterName}`}
+          startIcon={<Twitter />}
+        >
+          @{projectTwitterName}
+        </Button>
+      </Box>
     </AppBarLayout>
   );
 }
 
 export default function Address() {
-  // TODO:
   let { address } = useParams();
-  console.log("Address", { address });
   let info = useAddressInfo(address);
   if (!info) {
     return <LoadingAddress />;
   }
   if (info.redirect) {
-    console.log("navigating to", info.redirect);
     return <Navigate to={info.redirect.to} />;
   }
   if (info.contract) {
