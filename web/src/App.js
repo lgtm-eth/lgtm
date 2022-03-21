@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
+// import Address from "./Address";
 import Splash from "./Splash";
 
 // Pages
@@ -13,7 +14,7 @@ function App() {
       {/*<Route path="/address/:address" element={<Address/>} />*/}
       {/*<Route path="/project/:projectId" element={<Project />} />*/}
       {/*<Route path="/reviewer/:reviewerId" element={<Reviewer />} />*/}
-      {/*<Route path="*" element={<NotFound404 />} />*/}
+      <Route path="*" element={<Splash />} />
     </Routes>
   );
 }
