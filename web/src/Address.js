@@ -4,6 +4,7 @@ import { Navigate, useParams } from "react-router-dom";
 import {
   Box,
   Button,
+  Chip,
   CircularProgress,
   Container,
   Grid,
@@ -56,8 +57,10 @@ function WalletAddress() {
   );
 }
 
-function ReviewSummary({ percentage, sx }) {
+function ReviewSummary({ address, sx }) {
   let theme = useTheme();
+  let { contract } = useAddressInfo(address);
+  let { projectReviewPercentage } = contract;
   return (
     <Grid
       container
@@ -122,74 +125,97 @@ function ReviewSummary({ percentage, sx }) {
             },
           }}
         >
-          {percentage}%
+          {projectReviewPercentage}%
         </Typography>
       </Grid>
     </Grid>
   );
 }
 
-function ContractAddress({ address }) {
+function DataRow({ label, value }) {
+  return (
+    <Grid container alignItems="center" sx={{ mt: 1 }}>
+      <Grid item xs={3} sx={{ pr: 1, textAlign: "right" }}>
+        <Typography variant="overline" color="secondary">
+          {label}
+        </Typography>
+      </Grid>
+      <Grid item xs={9} sx={{ textAlign: "left" }}>
+        <Typography>{value}</Typography>
+      </Grid>
+    </Grid>
+  );
+}
+
+function TopBanner({ address, sx }) {
+  let { contract } = useAddressInfo(address);
+  let { projectBannerImageUrl } = contract;
+  return (
+    <>
+      <Box
+        component="img"
+        src={projectBannerImageUrl}
+        sx={{
+          ...sx,
+          objectFit: "cover",
+        }}
+      />
+      <Box
+        sx={{
+          ...sx,
+          background:
+            "radial-gradient(circle at 0%, #fff, transparent 80%, transparent 100%)",
+          position: "absolute",
+          top: 0,
+          left: 0,
+        }}
+      />
+    </>
+  );
+}
+
+function InfoTable({ address, sx }) {
+  return (
+    <Box
+      sx={{
+        ...sx,
+        display: "block",
+        maxWidth: "400px",
+        marginLeft: "auto",
+        marginRight: "auto",
+      }}
+    >
+      <Grid container>
+        <Grid item xs={3} sx={{ textAlign: "right" }} />
+        <Grid item xs={9} sx={{ textAlign: "left" }}>
+          <Grid container spacing={0.5}>
+            <Grid item>
+              <Chip size="small" label="NFT" />
+            </Grid>
+            <Grid item>
+              <Chip size="small" label="Ownable" />
+            </Grid>
+            <Grid item>
+              <Chip size="small" label="Royalties" />
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
+      <DataRow label="NFT" value="Crypto Coven (WITCH)" />
+      <DataRow label="Supply" value="9.8K" />
+      <DataRow label="Owner" value="0xac9d...17fa" />
+      <DataRow label="Royalty" value="7.5%" />
+    </Box>
+  );
+}
+
+function HeroLockup({ address }) {
   let theme = useTheme();
   let { contract } = useAddressInfo(address);
-  let {
-    projectName,
-    projectBannerImageUrl,
-    projectLogoImageUrl,
-    projectReviewPercentage,
-    projectUrl,
-    projectTwitterName,
-  } = contract;
+  let { projectName, projectLogoImageUrl, projectUrl, projectTwitterName } =
+    contract;
   return (
-    <AppBarLayout>
-      <Box sx={{ position: "relative", textAlign: "center", zIndex: -1 }}>
-        <Box
-          component="img"
-          src={projectBannerImageUrl}
-          sx={{
-            width: "100vw",
-            height: "20vw",
-            [theme.breakpoints.down("md")]: {
-              width: "100vw",
-              height: "50vw",
-            },
-            // width: "100%",
-            // height: "600px",
-            objectFit: "cover",
-            // position: "absolute",
-            // zIndex: 0,
-            // top: 0,
-            // left: 0,
-          }}
-        />
-        <Box
-          sx={{
-            width: "100vw",
-            height: "20vw",
-            [theme.breakpoints.down("md")]: {
-              width: "100vw",
-              height: "50vw",
-            },
-            background:
-              "radial-gradient(circle at 0%, #fff, transparent 80%, transparent 100%)",
-            position: "absolute",
-            top: 0,
-            left: 0,
-          }}
-        />
-        <ReviewSummary
-          sx={{
-            position: "absolute",
-            bottom: 18,
-            left: 24,
-            [theme.breakpoints.down("md")]: {
-              left: 16,
-            },
-          }}
-          status="LG"
-          percentage={projectReviewPercentage}
-        />
-      </Box>
+    <div>
       <Box
         component="img"
         src={projectLogoImageUrl}
@@ -254,6 +280,76 @@ function ContractAddress({ address }) {
           @{projectTwitterName}
         </Button>
       </Box>
+    </div>
+  );
+}
+
+function ContractAddress({ address }) {
+  let theme = useTheme();
+  return (
+    <AppBarLayout>
+      <Box sx={{ position: "relative", textAlign: "center", zIndex: -1 }}>
+        <TopBanner
+          address={address}
+          sx={{
+            width: "100vw",
+            height: "20vw",
+            [theme.breakpoints.down("md")]: {
+              width: "100vw",
+              height: "50vw",
+            },
+          }}
+        />
+        <ReviewSummary
+          address={address}
+          sx={{
+            position: "absolute",
+            bottom: 18,
+            left: 24,
+            [theme.breakpoints.down("md")]: {
+              left: 16,
+            },
+          }}
+          status="LG"
+        />
+      </Box>
+      <Grid container>
+        <Grid
+          xs={0}
+          md={4}
+          item
+          sx={{
+            p: 3,
+            [theme.breakpoints.down("md")]: {
+              display: "none",
+            },
+          }}
+        >
+          <InfoTable address={address} />
+        </Grid>
+        <Grid xs={12} md={4} item>
+          <HeroLockup address={address} />
+          <InfoTable
+            address={address}
+            sx={{
+              mt: 1,
+              [theme.breakpoints.up("md")]: {
+                display: "none",
+              },
+            }}
+          />
+        </Grid>
+        <Grid
+          xs={0}
+          md={4}
+          item
+          sx={{
+            [theme.breakpoints.down("md")]: {
+              display: "none",
+            },
+          }}
+        />
+      </Grid>
     </AppBarLayout>
   );
 }
