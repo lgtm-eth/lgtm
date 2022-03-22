@@ -9,6 +9,7 @@ const blinkSequence = async (next, cancel) => {
 // The pupil can scale 20% (from 80% to 100%)
 const PUPIL_SCALABILITY = 0.4;
 export function Eye({
+  color = "#003300",
   clientX = window.innerWidth * 0.75,
   clientY = window.innerHeight * 0.75,
   size = 1.0,
@@ -87,24 +88,25 @@ export function Eye({
         <ellipse fill="white" fillOpacity="0.3" {...background} />
         <ellipse fill="white" {...white} />
         <ellipse fill="black" {...pupil} />
-        <ellipse
-          fill="#003300"
-          fillOpacity="1"
-          {...white}
-          mask="url(#eyelid)"
-        />
+        <ellipse fill={color} fillOpacity="1" {...white} mask="url(#eyelid)" />
         {/*<rect fill="#a0a0a0" fillOpacity="1" width="100%" height="100%" mask="url(#eyelid)"/>*/}
       </g>
     </svg>
   );
 }
 
-export default function Eyes({ clientX, clientY, size = 1.0, sx }) {
+export default function Eyes({
+  color = "#003300",
+  clientX,
+  clientY,
+  size = 1.0,
+  sx,
+}) {
   return (
     <Box
       sx={sx}
       style={{
-        background: "#003300",
+        background: color,
         lineHeight: 0,
         padding: `${16 * size}px ${24 * size}px`,
         width: 128 * size,
@@ -112,8 +114,8 @@ export default function Eyes({ clientX, clientY, size = 1.0, sx }) {
         borderRadius: 96 * size,
       }}
     >
-      <Eye {...{ clientX, clientY, size }} />
-      <Eye {...{ clientX, clientY, size }} />
+      <Eye {...{ color, clientX, clientY, size }} />
+      <Eye {...{ color, clientX, clientY, size }} />
     </Box>
   );
 }
