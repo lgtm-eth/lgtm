@@ -25,6 +25,7 @@ const theme = createTheme({
     borderRadius: 10,
   },
   typography: {
+    fontFamily: "Poppins",
     button: {
       textTransform: "none",
     },
