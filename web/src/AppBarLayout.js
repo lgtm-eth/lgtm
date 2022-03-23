@@ -139,10 +139,15 @@ export default function AppBarLayout({ children }) {
         })
       }
     >
-      <AppBar enableColorOnDark>
+      <AppBar color="primary">
         <Toolbar>
           <Box sx={{ display: "flex", alignItems: "center", flex: "auto" }}>
-            <Eyes {...eyes} size={0.4} sx={{ mr: 2 }} />
+            <Eyes
+              {...eyes}
+              color={theme.palette.primary.main}
+              size={0.4}
+              sx={{ mr: 2 }}
+            />
             <Wordmark height={48} />
           </Box>
           {/* TODO */}

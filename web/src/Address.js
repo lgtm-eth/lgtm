@@ -2,8 +2,13 @@ import AppBarLayout from "./AppBarLayout";
 import React from "react";
 import { Navigate, useParams } from "react-router-dom";
 import {
+  Avatar,
   Box,
   Button,
+  ButtonGroup,
+  Card,
+  CardActionArea,
+  CardContent,
   Chip,
   CircularProgress,
   Container,
@@ -14,7 +19,8 @@ import {
 import reviewStatusLG from "./review-status-lg.svg";
 import projectBannerImageUrl from "./coven_banner.png";
 import projectLogoImageUrl from "./coven_logo.png";
-import { Twitter, WebAsset } from "@mui/icons-material";
+import { Check, GitHub, Twitter, WebAsset } from "@mui/icons-material";
+import Etherscan from "./Etherscan";
 
 // TODO: make this dynamic
 const INFO = {
@@ -25,9 +31,11 @@ const INFO = {
   },
   "cryptocoven.eth": {
     contract: {
+      address: "0x5180db8F5c931aaE63c74266b211F580155ecac8",
+      addressName: "cryptocoven.eth",
       projectName: "Crypto Coven",
       projectReviewPercentage: 84,
-      projectUrl: "https://cryptocoven.xyz",
+      projectWebUrl: "https://cryptocoven.xyz",
       projectTwitterName: "crypto_coven",
       projectBannerImageUrl,
       projectLogoImageUrl,
@@ -35,8 +43,39 @@ const INFO = {
   },
 };
 
-function useAddressInfo(address) {
-  return INFO[address]; // TODO real data
+const SOURCE_INFO = {
+  "0x5180db8F5c931aaE63c74266b211F580155ecac8": {
+    name: "CryptoCoven.sol",
+    github: {
+      repositoryUrl: "https://github.com/cryptocoven/contracts",
+    },
+    etherscan: {
+      verifiedCodeUrl: "https://etherscan.io/address/cryptocoven.eth#code",
+      compilation: {
+        compilerVersion: "v0.8.4+commit.c7e474f2",
+        optimization: {
+          enabled: true,
+          runs: 100_000,
+        },
+      },
+      files: [
+        {
+          name: "CryptoCoven.sol",
+          syntax: "solidity ^0.8.0",
+        },
+      ],
+    },
+  },
+};
+SOURCE_INFO["cryptocoven.eth"] =
+  SOURCE_INFO["0x5180db8F5c931aaE63c74266b211F580155ecac8"];
+
+function useAddressInfo(addressOrName) {
+  return INFO[addressOrName]; // TODO real data
+}
+
+function useAddressSourceInfo(addressOrName) {
+  return SOURCE_INFO[addressOrName]; // TODO real data
 }
 
 function LoadingAddress() {
@@ -57,72 +96,44 @@ function WalletAddress() {
   );
 }
 
-function ReviewSummary({ address, sx }) {
+function ReviewSummary({ size = 1, address, sx = {} }) {
   let theme = useTheme();
   let { contract } = useAddressInfo(address);
   let { projectReviewPercentage } = contract;
   return (
-    <Grid
-      container
-      sx={{
-        ...sx,
-        borderRadius: "36px",
-        overflow: "hidden",
-        height: 72,
-        [theme.breakpoints.down("md")]: {
-          ...sx[theme.breakpoints.down("md")],
-          borderRadius: "18px",
-          height: 36,
-        },
-        width: "auto",
-        textAlign: "center",
-      }}
-    >
-      <Grid
-        item
-        sx={{
-          backgroundColor: theme.palette.primary.main,
-          height: 72,
-          width: 72,
-          padding: "12px 12px 12px 18px",
-          [theme.breakpoints.down("md")]: {
-            height: 36,
-            width: 36,
-            padding: "6px 6px 6px 9px",
-          },
-        }}
-      >
+    <Grid container justifyContent="center" alignItems="center" sx={sx}>
+      <Grid item>
         <Box
-          component="img"
-          src={reviewStatusLG}
           sx={{
-            width: 48,
+            display: "inline-block",
+            backgroundColor: theme.palette.primary.main,
             height: 48,
-            [theme.breakpoints.down("md")]: {
-              width: 24,
-              height: 24,
-            },
+            width: 48,
+            borderRadius: 24,
+            // border: `3px solid ${theme.palette.info.main}`,
+            padding: "8px 8px 8px 8px",
           }}
-        />
+        >
+          <Box
+            component="img"
+            src={reviewStatusLG}
+            sx={{
+              width: 32,
+              height: 32,
+            }}
+          />
+        </Box>
       </Grid>
-      <Grid
-        item
-        sx={{
-          backgroundColor: theme.palette.secondary.main,
-          height: 72,
-          padding: "12px 18px 12px 12px",
-          [theme.breakpoints.down("md")]: {
-            height: 36,
-            padding: "6px 9px 6px 6px",
-          },
-        }}
-      >
+      <Grid item ml={-1} zIndex={-1}>
         <Typography
-          variant="h1"
+          variant="h3"
           sx={{
-            [theme.breakpoints.down("md")]: {
-              fontSize: "20px",
-            },
+            m: 0,
+            display: "inline-block",
+            backgroundColor: "#192319",
+            // height: 48,
+            px: "24px",
+            fontSize: "26px",
           }}
         >
           {projectReviewPercentage}%
@@ -135,12 +146,12 @@ function ReviewSummary({ address, sx }) {
 function DataRow({ label, value }) {
   return (
     <Grid container alignItems="center" sx={{ mt: 1 }}>
-      <Grid item xs={3} sx={{ pr: 1, textAlign: "right" }}>
-        <Typography variant="overline" color="secondary">
+      <Grid item xs={4} alignItems="center" sx={{ pr: 1, textAlign: "right" }}>
+        <Typography variant="overline" color="secondary.light">
           {label}
         </Typography>
       </Grid>
-      <Grid item xs={9} sx={{ textAlign: "left" }}>
+      <Grid item xs={8} justifyContent="center" sx={{ textAlign: "left" }}>
         <Typography>{value}</Typography>
       </Grid>
     </Grid>
@@ -151,77 +162,73 @@ function TopBanner({ address, sx }) {
   let { contract } = useAddressInfo(address);
   let { projectBannerImageUrl } = contract;
   return (
-    <>
-      <Box
-        component="img"
-        src={projectBannerImageUrl}
-        sx={{
-          ...sx,
-          objectFit: "cover",
-        }}
-      />
-      <Box
-        sx={{
-          ...sx,
-          background:
-            "radial-gradient(circle at 0%, #fff, transparent 80%, transparent 100%)",
-          position: "absolute",
-          top: 0,
-          left: 0,
-        }}
-      />
-    </>
+    <Box
+      component="img"
+      src={projectBannerImageUrl}
+      sx={{
+        ...sx,
+        objectFit: "cover",
+        filter: "grayscale(60%)",
+      }}
+    />
   );
 }
 
 function InfoTable({ address, sx }) {
+  // TODO: let {...} = use<TBD>(address)
   return (
-    <Box
+    <Card
+      elevation={1}
       sx={{
         ...sx,
         display: "block",
-        maxWidth: "400px",
+        // maxWidth: "400px",
         marginLeft: "auto",
         marginRight: "auto",
+        textAlign: "center",
       }}
     >
-      <Grid container>
-        <Grid item xs={3} sx={{ textAlign: "right" }} />
-        <Grid item xs={9} sx={{ textAlign: "left" }}>
-          <Grid container spacing={0.5}>
-            <Grid item>
-              <Chip size="small" label="NFT" />
-            </Grid>
-            <Grid item>
-              <Chip size="small" label="Ownable" />
-            </Grid>
-            <Grid item>
-              <Chip size="small" label="Royalties" />
+      <CardContent sx={{}}>
+        <Grid container>
+          <Grid item xs={4} sx={{ textAlign: "right" }} />
+          <Grid item xs={8} sx={{ textAlign: "left" }}>
+            <Grid container spacing={0.5}>
+              <Grid item>
+                <Chip color="default" size="small" label="NFT" />
+              </Grid>
+              <Grid item>
+                <Chip color="default" size="small" label="Ownable" />
+              </Grid>
+              <Grid item>
+                <Chip color="default" size="small" label="Royalties" />
+              </Grid>
             </Grid>
           </Grid>
         </Grid>
-      </Grid>
-      <DataRow label="NFT" value="Crypto Coven (WITCH)" />
-      <DataRow label="Supply" value="9.8K" />
-      <DataRow label="Owner" value="0xac9d...17fa" />
-      <DataRow label="Royalty" value="7.5%" />
-    </Box>
+        {/* TODO: use loaded data */}
+        <DataRow label="NFT" value="Crypto Coven (WITCH)" />
+        <DataRow label="Supply" value="9.8K" />
+        <DataRow label="Owner" value="0xac9d...17fa" />
+        <DataRow label="Royalty" value="7.5%" />
+      </CardContent>
+    </Card>
   );
 }
 
 function HeroLockup({ address }) {
   let theme = useTheme();
   let { contract } = useAddressInfo(address);
-  let { projectName, projectLogoImageUrl, projectUrl, projectTwitterName } =
+  let { projectName, projectLogoImageUrl, projectWebUrl, projectTwitterName } =
     contract;
   return (
-    <div>
+    <Box>
       <Box
         component="img"
         src={projectLogoImageUrl}
         sx={{
           width: 126,
           height: 126,
+          filter: "grayscale(60%)",
           borderRadius: "63px",
           border: `5px solid ${theme.palette.background.default}`,
           marginTop: "-63px",
@@ -249,6 +256,12 @@ function HeroLockup({ address }) {
       >
         {projectName}
       </Typography>
+      <ReviewSummary
+        address={address}
+        sx={{
+          mt: 1,
+        }}
+      />
       <Box
         sx={{
           textAlign: "left",
@@ -262,25 +275,110 @@ function HeroLockup({ address }) {
         <Button
           variant="text"
           size="small"
-          color="secondary"
-          sx={{ mb: 0.25 }}
-          href={projectUrl}
+          color="inherit"
+          sx={{ my: 0.5 }}
+          href={projectWebUrl}
           startIcon={<WebAsset />}
         >
-          {projectUrl}
+          {projectWebUrl}
         </Button>
         <br />
         <Button
           variant="text"
           size="small"
-          color="secondary"
+          color="inherit"
           href={`https://twitter.com/${projectTwitterName}`}
           startIcon={<Twitter />}
         >
           @{projectTwitterName}
         </Button>
       </Box>
-    </div>
+    </Box>
+  );
+}
+
+function SourceInfo({ address, sx }) {
+  let { github, etherscan } = useAddressSourceInfo(address);
+  return (
+    <Card
+      sx={{
+        ...sx,
+        textAlign: "left",
+      }}
+    >
+      <CardContent>
+        <Grid container spacing={1} alignItems="center">
+          <Grid item xs={6}>
+            <Grid container direction="column" spacing={1}>
+              <Grid item>
+                <Button
+                  variant="text"
+                  size="small"
+                  color="inherit"
+                  href={github.repositoryUrl}
+                  startIcon={<GitHub />}
+                >
+                  {github.repositoryUrl.split("github.com/").pop()}
+                </Button>
+              </Grid>
+              <Grid item>
+                <Button
+                  variant="text"
+                  size="small"
+                  color="inherit"
+                  href={etherscan.verifiedCodeUrl}
+                  startIcon={<Etherscan />}
+                >
+                  {etherscan.verifiedCodeUrl
+                    .split("etherscan.io/address/")
+                    .pop()}
+                </Button>
+              </Grid>
+            </Grid>
+          </Grid>
+          <Grid item xs={6}>
+            <Card elevation={8}>
+              <CardActionArea>
+                <CardContent>
+                  <Typography variant="subtitle2">
+                    {etherscan.files[0].name}
+                  </Typography>
+                  <Typography variant="caption" color="secondary.light">
+                    {etherscan.files[0].syntax}
+                  </Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickReview({ address, sx }) {
+  return (
+    <Grid justifyContent="center" spacing={1} container sx={{ ...sx }}>
+      <Grid item>
+        <Avatar />
+      </Grid>
+      <Grid item>
+        <ButtonGroup>
+          <Button sx={{ width: "48px" }} variant="contained" color="warning">
+            !
+          </Button>
+          <Button sx={{ width: "48px" }} variant="contained" color="info">
+            ?
+          </Button>
+          <Button sx={{ width: "48px" }} variant="contained" color="primary">
+            <Check fontSize="inherit" />
+          </Button>
+        </ButtonGroup>
+        <Typography component="p" variant="overline">
+          Quick Review
+        </Typography>
+      </Grid>
+    </Grid>
   );
 }
 
@@ -300,18 +398,6 @@ function ContractAddress({ address }) {
             },
           }}
         />
-        <ReviewSummary
-          address={address}
-          sx={{
-            position: "absolute",
-            bottom: 18,
-            left: 24,
-            [theme.breakpoints.down("md")]: {
-              left: 16,
-            },
-          }}
-          status="LG"
-        />
       </Box>
       <Grid container>
         <Grid
@@ -327,28 +413,35 @@ function ContractAddress({ address }) {
         >
           <InfoTable address={address} />
         </Grid>
-        <Grid xs={12} md={4} item>
+        <Grid xs={12} md={4} item sx={{ pl: 3, pr: 3 }}>
           <HeroLockup address={address} />
-          <InfoTable
-            address={address}
+          <Box
             sx={{
-              mt: 1,
               [theme.breakpoints.up("md")]: {
                 display: "none",
               },
             }}
-          />
+          >
+            <InfoTable address={address} sx={{ mt: 1 }} />
+
+            <SourceInfo address={address} sx={{ mt: 1 }} />
+            <QuickReview address={address} sx={{ mt: 2 }} />
+          </Box>
         </Grid>
         <Grid
           xs={0}
           md={4}
           item
           sx={{
+            p: 3,
             [theme.breakpoints.down("md")]: {
               display: "none",
             },
           }}
-        />
+        >
+          <SourceInfo address={address} />
+          <QuickReview address={address} sx={{ mt: 2 }} />
+        </Grid>
       </Grid>
     </AppBarLayout>
   );
