@@ -1,0 +1,6 @@
+# action.yml
+name: "firebase"
+description: "runs firebase CLI w/ supplied args"
+runs:
+  using: "docker"
+  image: "Dockerfile"
