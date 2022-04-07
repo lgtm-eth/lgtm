@@ -24,7 +24,7 @@ function onApiRequest(method) {
 }
 
 Object.keys(api).forEach(method => {
-  app.post(`/api/${method}`, onApiRequest(api[method]));
+  app.post(`/app/api/${method}`, onApiRequest(api[method]));
 });
 
 exports = module.exports = app;
