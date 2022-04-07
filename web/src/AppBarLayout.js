@@ -110,7 +110,7 @@ function Footer() {
   );
 }
 
-export default function AppBarLayout({ children }) {
+export default function AppBarLayout({ children, hideFooter }) {
   let theme = useTheme();
   let [eyes, setEyes] = useState({ clientX: 0, clientY: 0 });
   // eslint-disable-next-line
@@ -121,9 +121,9 @@ export default function AppBarLayout({ children }) {
   return (
     <Box
       sx={{
-        paddingTop: "64px",
+        paddingTop: hideFooter ? 0 : "64px",
         [theme.breakpoints.down("md")]: {
-          paddingTop: "48px",
+          paddingTop: hideFooter ? 0 : "48px",
         },
       }}
       onTouchMove={(e) =>
@@ -157,10 +157,21 @@ export default function AppBarLayout({ children }) {
         </Toolbar>
       </AppBar>
       <main>
-        <div style={{ textAlign: "center", minHeight: "100vh" }}>
+        <Box
+          sx={{
+            paddingTop: hideFooter ? "64px" : 0,
+            [theme.breakpoints.down("md")]: {
+              paddingTop: hideFooter ? "48px" : 0,
+            },
+            textAlign: "center",
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {children}
-        </div>
-        <Footer />
+        </Box>
+        {hideFooter ? null : <Footer />}
       </main>
     </Box>
   );

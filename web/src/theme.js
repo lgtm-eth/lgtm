@@ -18,7 +18,7 @@ const theme = createTheme({
     },
     text: {
       primary: "#fff",
-      secondary: "#fff",
+      secondary: "#aaa",
     },
   },
   shape: {
@@ -32,6 +32,11 @@ const theme = createTheme({
     h1: {
       fontFamily: "Poppins",
       fontWeight: 600,
+      fontSize: 40,
+    },
+    code: {
+      fontFamily: "monospace",
+      fontWeight: 400,
       fontSize: 40,
     },
   },
