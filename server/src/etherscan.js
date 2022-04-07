@@ -21,6 +21,14 @@ const API_URL = {
 const apiClient = axios.create({
   baseURL: API_URL,
 })
+// apiClient.interceptors.request.use(req => {
+//   console.log("API ->", req.method, req.baseURL)
+//   return req
+// })
+// apiClient.interceptors.response.use(res => {
+//   console.log("<- API", res.status, res.request.method, res.request)
+//   return res
+// })
 
 const API = _.mapValues(API_MODULES,
   (methods, module) => _.mapValues(methods,
