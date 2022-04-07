@@ -3,7 +3,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 
 const API_BASE_URL =
   process.env.NODE_ENV === "development"
-    ? "http://localhost:5001/lgtm-info-dev/us-central1/app/api"
+    ? "http://localhost:5001/lgtm-info-dev/us-central1/app/app/api"
     : "/app/api";
 
 // These are the available API methods.

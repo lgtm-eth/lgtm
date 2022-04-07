@@ -73,6 +73,11 @@ function findContractFile(dir, contractName) {
   return null
 }
 
+function cleanupPath(path) {
+  // remove any leading slash
+  return _.trim(path, "/")
+}
+
 async function gatherEtherscanSource(address) {
   let ethRes = await etherscan.contract.getsourcecode({address})
   let result = ethRes.data.result[0]
@@ -99,7 +104,7 @@ async function gatherEtherscanSource(address) {
     }
   }
 
-  let filesByPath = sourceCode.sources;
+  let filesByPath = _.mapKeys(sourceCode.sources, (info, path) => cleanupPath(path));
   let fileRoot = buildFileRoot(filesByPath);
   let contractFile = findContractFile(fileRoot, contractName);
   return {
