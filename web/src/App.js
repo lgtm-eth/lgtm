@@ -1,7 +1,8 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import Address, { Source } from "./Address";
-import Splash from "./Splash";
+import Address from "./pages/Address";
+import AddressCode from "./pages/AddressCode";
+import Splash from "./pages/Splash";
 
 // Pages
 
@@ -12,7 +13,7 @@ function App() {
       {/* TODO: */}
       {/*<Route path="/" element={<Home />} />*/}
       <Route path="/address/:address" element={<Address />} />
-      <Route path="/address/:address/code" element={<Source />} />
+      <Route path="/address/:address/code" element={<AddressCode />} />
       {/*<Route path="/project/:projectId" element={<Project />} />*/}
       {/*<Route path="/reviewer/:reviewerId" element={<Reviewer />} />*/}
       <Route path="*" element={<Splash />} />

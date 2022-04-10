@@ -1,4 +1,4 @@
-import AppBarLayout from "./AppBarLayout";
+import AppBarLayout from "./components/AppBarLayout";
 import React from "react";
 
 function NotFound404() {
