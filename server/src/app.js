@@ -24,6 +24,7 @@ function onApiRequest(method) {
 }
 
 Object.keys(api).forEach(method => {
+  console.log("configuring", `/app/api/${method}`)
   app.post(`/app/api/${method}`, onApiRequest(api[method]));
 });
 

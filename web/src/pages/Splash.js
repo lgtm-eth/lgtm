@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import Eyes from "./Eyes";
+import Eyes from "../Eyes";
 import _ from "lodash";
-import Wordmark from "./Wordmark";
+import Wordmark from "../Wordmark";
 
 // TODO / FUN list:
 // - make eyes blink during reposition (not just after a delay)

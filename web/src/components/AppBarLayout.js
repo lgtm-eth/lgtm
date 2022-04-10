@@ -4,8 +4,8 @@ import React, { useCallback, useState } from "react";
 // import Web3Modal from "web3modal";
 // import { ethers } from "ethers";
 import _ from "lodash";
-import Eyes from "./Eyes";
-import Wordmark from "./Wordmark";
+import Eyes from "../Eyes";
+import Wordmark from "../Wordmark";
 
 // const providerOptions = {
 //   walletconnect: {
