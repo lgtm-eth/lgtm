@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "https://lgtm.info",
+      "https://*.web.app",
+      "http://localhost:3000",
+      "http://localhost:8000"
+    ],
+    "responseHeader": ["Content-Type"],
+    "method": ["GET", "HEAD", "DELETE"],
+    "maxAgeSeconds": 3600
+  }
+]
