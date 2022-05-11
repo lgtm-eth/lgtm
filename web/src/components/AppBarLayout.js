@@ -1,4 +1,4 @@
-import { AppBar, Box, Toolbar, useTheme } from "@mui/material";
+import { AppBar, Box, Button, Toolbar, useTheme } from "@mui/material";
 import React, { useCallback, useState } from "react";
 // import WalletConnectProvider from "@walletconnect/web3-provider";
 // import Web3Modal from "web3modal";
@@ -6,6 +6,8 @@ import React, { useCallback, useState } from "react";
 import _ from "lodash";
 import Eyes from "../Eyes";
 import Wordmark from "../Wordmark";
+import Etherscan from "./icons/Etherscan";
+import { OpenInNew } from "@mui/icons-material";
 
 // const providerOptions = {
 //   walletconnect: {
@@ -150,10 +152,17 @@ export default function AppBarLayout({ children, hideFooter }) {
             />
             <Wordmark height={48} />
           </Box>
-          {/* TODO */}
-          {/*<Button color="inherit" variant="outlined" onClick={login}>*/}
-          {/*  Login*/}
-          {/*</Button>*/}
+          <Button
+            color="secondary"
+            variant={"text"}
+            startIcon={<Etherscan />}
+            endIcon={<OpenInNew />}
+            target="_blank"
+            size="large"
+            href={`https://etherscan.io${window.location.pathname}`}
+          >
+            Explore on Etherscan
+          </Button>
         </Toolbar>
       </AppBar>
       <main>
