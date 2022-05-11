@@ -1,9 +1,5 @@
-import AppBarLayout from "../components/AppBarLayout";
 import React, { useState } from "react";
-import { useParams } from "react-router-dom";
 import {
-  Box,
-  CircularProgress,
   Grid,
   Collapse,
   List,
@@ -15,9 +11,8 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import { ChevronRight, Folder, Article, Error } from "@mui/icons-material";
+import { ChevronRight, Folder, Article } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
-import { useApi } from "../api";
 import _ from "lodash";
 
 const FileListNav = styled(List)({
@@ -86,7 +81,7 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
       </ListItemButton>
       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          {_.orderBy(node.children, "name").map((child) => (
+          {_.orderBy(node.children, ["type", "name"]).map((child) => (
             <FileListItem
               key={child.path}
               inset={inset + 1}
@@ -137,36 +132,11 @@ function keyFilesByPath(node, results = {}) {
   return results;
 }
 
-function SourceViewer({ address }) {
-  let { isLoading, isFailure, response } = useApi.getAddressCode({ address });
-  if (isLoading) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-  if (isFailure) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Error />
-      </Box>
-    );
-  }
-  let { fileRoot } = response;
-  let filesByPath = keyFilesByPath(fileRoot);
-  return (
-    <LoadedSourceViewer
-      filesByPath={filesByPath}
-      address={address}
-      {...response}
-    />
-  );
-}
-
-function LoadedSourceViewer({ filesByPath, fileRoot, contractFilePath }) {
+export default function SourceViewer({ address, source, byteCode }) {
+  let { contractFilePath, fileRoot } = source || {};
   let [tabs, setTabs] = useState([contractFilePath]);
   let [selectedPath, setSelectedPath] = useState(contractFilePath);
+  let filesByPath = keyFilesByPath(fileRoot) || {};
   let selectedFile = filesByPath[selectedPath];
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
@@ -214,21 +184,12 @@ function LoadedSourceViewer({ filesByPath, fileRoot, contractFilePath }) {
               options={{ readOnly: true }}
               path={selectedPath}
               theme="vs-dark"
-              defaultLanguage={"sol"}
+              defaultLanguage={selectedPath.endsWith(".vy") ? "vy" : "sol"}
               defaultValue={selectedFile ? selectedFile.content : ""}
             />
           </Grid>
         </Grid>
       </Grid>
     </Grid>
-  );
-}
-
-export default function AddressCode() {
-  let { address } = useParams();
-  return (
-    <AppBarLayout hideFooter>
-      <SourceViewer address={address} />
-    </AppBarLayout>
   );
 }
