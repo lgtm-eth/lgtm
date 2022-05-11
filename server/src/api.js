@@ -3,7 +3,12 @@ const sources = require("./sources");
 
 async function getAddressInfo({ address }) {
   if (address && address.endsWith(".eth")) {
-    address = await provider.resolveName(address);
+    let resolvedAddress = await provider.resolveName(address);
+    return {
+      redirect: {
+        to: `/address/${resolvedAddress}`,
+      },
+    };
   }
   if (!address || !ethers.utils.isAddress(address)) {
     throw new Error(`bad address`);
