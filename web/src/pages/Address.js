@@ -10,9 +10,10 @@ import {
   Typography,
 } from "@mui/material";
 import { Error } from "@mui/icons-material";
-import { useApi } from "../api";
+import { Api } from "../api";
 import { useLookupAddress } from "../eth";
 import SourceViewer from "../components/SourceViewer";
+import { useQuery } from "react-query";
 
 function LoadingAddress() {
   return (
@@ -80,13 +81,32 @@ function WalletInfoTable({ address, sx }) {
   );
 }
 
+const STORAGE_BASE_URL = process.env.REACT_APP_STORAGE_BASE_URL;
 export default function Address() {
   let { address } = useParams();
-  let { isLoading, isFailure, response } = useApi.getAddressInfo({ address });
+  let {
+    isLoading,
+    isError,
+    data: info,
+  } = useQuery(
+    ["addressInfo", address],
+    () =>
+      fetch(`${STORAGE_BASE_URL}/address/${address}.json`).then(async (res) => {
+        if (res.ok) {
+          return res.json();
+        }
+        await Api.refreshAddressInfo({ address });
+        throw new Error(`addressInfo unavailable, triggered refresh`);
+      }),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    }
+  );
   if (isLoading) {
     return <LoadingAddress />;
   }
-  if (isFailure) {
+  if (isError) {
     return (
       <AppBarLayout>
         <Container sx={{ textAlign: "center", pt: "30vh" }}>
@@ -95,18 +115,18 @@ export default function Address() {
       </AppBarLayout>
     );
   }
-  if (response.redirect) {
-    return <Navigate to={response.redirect.to} />;
+  if (info.redirect) {
+    return <Navigate to={info.redirect.to} />;
   }
-  if (response.contract) {
+  if (info.contract) {
     return (
       <AppBarLayout hideFooter>
-        <SourceViewer {...response.contract} />
+        <SourceViewer {...info.contract} />
       </AppBarLayout>
     );
   }
-  if (response.wallet) {
-    return <WalletAddress {...{ address: response.wallet.address }} />;
+  if (info.wallet) {
+    return <WalletAddress {...{ address: info.wallet.address }} />;
   }
   return <Error />;
 }

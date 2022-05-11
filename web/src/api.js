@@ -11,8 +11,7 @@ const API_BASE_URL =
 // e.g. useApi.getSource({...})
 //      Api.getSource({...})
 const apiMethods = {
-  getAddressInfo: ({ address }) => {},
-  getAddressCode: ({ address }) => {},
+  refreshAddressInfo: ({ address }) => {},
   // TODO: add more methods
   // TODO: add per-method configs
 };

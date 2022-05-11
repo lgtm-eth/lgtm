@@ -13,11 +13,16 @@ import {
   Divider,
 } from "@mui/material";
 import { ChevronRight, Folder, Article, Code } from "@mui/icons-material";
-import Editor from "@monaco-editor/react";
 import _ from "lodash";
 import { hexy } from "hexy";
 import { useDocumentTitle } from "../hooks";
 import { ethers } from "ethers";
+import Editor, { loader } from "@monaco-editor/react";
+loader.config({
+  paths: {
+    vs: process.env.PUBLIC_URL + "/vs",
+  },
+});
 
 const FileListNav = styled(List)({
   "& .MuiListItemButton-root": {
