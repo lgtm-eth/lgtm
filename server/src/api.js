@@ -1,7 +1,15 @@
 const { ethers, provider } = require("./eth");
 const sources = require("./sources");
+const storage = require("./storage");
 
-async function getAddressInfo({ address }) {
+async function refreshAddressInfo({ address }) {
+  // TODO: add to a refreshing queue etc
+  let info = await gatherAddressInfo({ address });
+  await storage.saveJSON(`address/${address}.json`, info);
+  return { refreshing: true };
+}
+
+async function gatherAddressInfo({ address }) {
   if (address && address.endsWith(".eth")) {
     let resolvedAddress = await provider.resolveName(address);
     return {
@@ -32,5 +40,5 @@ async function getAddressInfo({ address }) {
 }
 
 exports = module.exports = {
-  getAddressInfo,
+  refreshAddressInfo,
 };
