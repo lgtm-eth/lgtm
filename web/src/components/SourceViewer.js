@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Grid,
   Collapse,
@@ -10,11 +10,19 @@ import {
   useTheme,
   Tabs,
   Tab,
+  // Button, Divider, ListSubheader, Typography,
 } from "@mui/material";
-import { ChevronRight, Folder, Article } from "@mui/icons-material";
+import {
+  ChevronRight,
+  Folder,
+  Article,
+  // Code,
+} from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import _ from "lodash";
+import { hexy } from "hexy";
 import { useDocumentTitle } from "../hooks";
+import { ethers } from "ethers";
 
 const FileListNav = styled(List)({
   "& .MuiListItemButton-root": {
@@ -97,6 +105,25 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
   );
 }
 
+const BYTE_CODE = "Byte Code";
+
+// function ByteCodeListItem({onPathSelected, selectedPath, }) {
+//   let theme = useTheme();
+//   return (
+//     <ListItemButton
+//       sx={{ pl: 2, color: theme.palette.primary.light }}
+//       dense
+//       onClick={() => onPathSelected(BYTE_CODE)}
+//       selected={selectedPath === BYTE_CODE}
+//     >
+//       <ListItemIcon>
+//         <Code sx={{mr: 1}}/>
+//       </ListItemIcon>
+//       <ListItemText primary="Byte Code"
+//                    primaryTypographyProps={{variant: "overline"}}/></ListItemButton>
+//   )
+// }
+
 function FileList({ root, onPathSelected, selectedPath = "" }) {
   let dirs = _.orderBy(root.children, "name").filter(
     ({ type }) => type === "directory"
@@ -120,6 +147,8 @@ function FileList({ root, onPathSelected, selectedPath = "" }) {
           selectedPath={selectedPath}
         />
       ))}
+      {/*<Divider />*/}
+      {/*<ByteCodeListItem onPathSelected={onPathSelected} selectedPath={selectedPath}/>*/}
     </FileListNav>
   );
 }
@@ -135,10 +164,23 @@ function keyFilesByPath(node, results = {}) {
 
 export default function SourceViewer({ address, source, byteCode }) {
   let { contractFilePath, fileRoot } = source || {};
+  let byteCodeHex = useMemo(() => {
+    let buf = Buffer.from(ethers.utils.arrayify(byteCode));
+    return hexy(buf, {
+      width: 16,
+    });
+  }, [byteCode]);
   let [tabs, setTabs] = useState([contractFilePath]);
   let [selectedPath, setSelectedPath] = useState(contractFilePath);
   useDocumentTitle(`${source.contractName} - ${address}`);
   let filesByPath = keyFilesByPath(fileRoot) || {};
+  // Add a synthetic "ByteCode" file
+  filesByPath[BYTE_CODE] = {
+    path: BYTE_CODE,
+    type: "file",
+    name: "Byte Code",
+    content: byteCodeHex,
+  };
   let selectedFile = filesByPath[selectedPath];
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
@@ -186,7 +228,7 @@ export default function SourceViewer({ address, source, byteCode }) {
               options={{ readOnly: true }}
               path={selectedPath}
               theme="vs-dark"
-              defaultLanguage={selectedPath.endsWith(".vy") ? "vy" : "sol"}
+              defaultLanguage={"sol"}
               defaultValue={selectedFile ? selectedFile.content : ""}
             />
           </Grid>

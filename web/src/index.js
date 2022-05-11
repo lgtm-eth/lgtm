@@ -9,6 +9,10 @@ import store from "./store/store";
 import App from "./App";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
+import { Buffer } from "buffer";
+if (!window.Buffer) {
+  window.Buffer = Buffer;
+}
 
 const queryClient = new QueryClient();
 

@@ -124,8 +124,8 @@ async function gatherEtherscanSource(address) {
   let fileRoot = buildFileRoot(filesByPath);
   let contractFile = findContractFile(fileRoot, contractName) || {
     // default, in case we can't analyze the source code
-    contractFileName: `${contractName}.${sourceLanguage}`,
-    contractFilePath: `contracts/${contractName}.${sourceLanguage}`,
+    name: `${contractName}.${sourceLanguage}`,
+    path: `contracts/${contractName}.${sourceLanguage}`,
   };
   return {
     address,

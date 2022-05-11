@@ -83,7 +83,6 @@ function WalletInfoTable({ address, sx }) {
 export default function Address() {
   let { address } = useParams();
   let { isLoading, isFailure, response } = useApi.getAddressInfo({ address });
-  console.log({ isLoading, isFailure, response });
   if (isLoading) {
     return <LoadingAddress />;
   }
