@@ -10,14 +10,12 @@ import {
   useTheme,
   Tabs,
   Tab,
-  // Button, Divider, ListSubheader, Typography,
+  Button,
+  Divider,
+  ListSubheader,
+  Typography,
 } from "@mui/material";
-import {
-  ChevronRight,
-  Folder,
-  Article,
-  // Code,
-} from "@mui/icons-material";
+import { ChevronRight, Folder, Article, Code } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import _ from "lodash";
 import { hexy } from "hexy";
@@ -107,22 +105,25 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
 
 const BYTE_CODE = "Byte Code";
 
-// function ByteCodeListItem({onPathSelected, selectedPath, }) {
-//   let theme = useTheme();
-//   return (
-//     <ListItemButton
-//       sx={{ pl: 2, color: theme.palette.primary.light }}
-//       dense
-//       onClick={() => onPathSelected(BYTE_CODE)}
-//       selected={selectedPath === BYTE_CODE}
-//     >
-//       <ListItemIcon>
-//         <Code sx={{mr: 1}}/>
-//       </ListItemIcon>
-//       <ListItemText primary="Byte Code"
-//                    primaryTypographyProps={{variant: "overline"}}/></ListItemButton>
-//   )
-// }
+function ByteCodeListItem({ onPathSelected, selectedPath }) {
+  let theme = useTheme();
+  return (
+    <ListItemButton
+      sx={{ pl: 2, color: theme.palette.primary.light }}
+      dense
+      onClick={() => onPathSelected(BYTE_CODE)}
+      selected={selectedPath === BYTE_CODE}
+    >
+      <ListItemIcon>
+        <Code sx={{ mr: 1 }} />
+      </ListItemIcon>
+      <ListItemText
+        primary="Byte Code"
+        primaryTypographyProps={{ variant: "overline" }}
+      />
+    </ListItemButton>
+  );
+}
 
 function FileList({ root, onPathSelected, selectedPath = "" }) {
   let dirs = _.orderBy(root.children, "name").filter(
@@ -147,8 +148,11 @@ function FileList({ root, onPathSelected, selectedPath = "" }) {
           selectedPath={selectedPath}
         />
       ))}
-      {/*<Divider />*/}
-      {/*<ByteCodeListItem onPathSelected={onPathSelected} selectedPath={selectedPath}/>*/}
+      <Divider />
+      <ByteCodeListItem
+        onPathSelected={onPathSelected}
+        selectedPath={selectedPath}
+      />
     </FileListNav>
   );
 }
