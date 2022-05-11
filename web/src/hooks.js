@@ -115,3 +115,12 @@ export function useDebounce(value, delay, initialValue = null) {
   );
   return debouncedValue;
 }
+
+export function useDocumentTitle(initialTitle) {
+  const setTitle = (title) => (document.title = title);
+  useEffect(() => setTitle(initialTitle), [initialTitle]);
+  return [
+    document.title, // TODO: consider watching for updates
+    setTitle,
+  ];
+}

@@ -14,6 +14,7 @@ import {
 import { ChevronRight, Folder, Article } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import _ from "lodash";
+import { useDocumentTitle } from "../hooks";
 
 const FileListNav = styled(List)({
   "& .MuiListItemButton-root": {
@@ -136,6 +137,7 @@ export default function SourceViewer({ address, source, byteCode }) {
   let { contractFilePath, fileRoot } = source || {};
   let [tabs, setTabs] = useState([contractFilePath]);
   let [selectedPath, setSelectedPath] = useState(contractFilePath);
+  useDocumentTitle(`${source.contractName} - ${address}`);
   let filesByPath = keyFilesByPath(fileRoot) || {};
   let selectedFile = filesByPath[selectedPath];
   return (
