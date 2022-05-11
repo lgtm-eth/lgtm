@@ -10,11 +10,11 @@ const DEFAULTS = {
 const FIREBASE_CONFIG = !process.env.FIREBASE_CONFIG
   ? {}
   : _.pick(
-    _.mapKeys(require("firebase-functions").config().env || {}, (v, k) =>
-      k.toUpperCase()
-    ),
-    _.keys(DEFAULTS)
-  );
+      _.mapKeys(require("firebase-functions").config().env || {}, (v, k) =>
+        k.toUpperCase()
+      ),
+      _.keys(DEFAULTS)
+    );
 
 // This looks for values in this order:
 //  1. firebase config
