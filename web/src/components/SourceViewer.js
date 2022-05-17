@@ -11,6 +11,7 @@ import {
   Tabs,
   Tab,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import { ChevronRight, Folder, Article, Code } from "@mui/icons-material";
 import _ from "lodash";
@@ -18,6 +19,8 @@ import { hexy } from "hexy";
 import { useDocumentTitle } from "../hooks";
 import { ethers } from "ethers";
 import Editor, { loader } from "@monaco-editor/react";
+import { decodeFileHash, encodeFileHash } from "../utils/fileHashCodec";
+import { useLocation } from "react-router-dom";
 loader.config({
   paths: {
     vs: process.env.PUBLIC_URL + "/vs",
@@ -150,11 +153,14 @@ function FileList({ root, onPathSelected, selectedPath = "" }) {
           selectedPath={selectedPath}
         />
       ))}
-      <Divider />
-      <ByteCodeListItem
-        onPathSelected={onPathSelected}
-        selectedPath={selectedPath}
-      />
+      {/* TODO: */}
+      {false && <Divider />}
+      {false && (
+        <ByteCodeListItem
+          onPathSelected={onPathSelected}
+          selectedPath={selectedPath}
+        />
+      )}
     </FileListNav>
   );
 }
@@ -169,16 +175,13 @@ function keyFilesByPath(node, results = {}) {
 }
 
 export default function SourceViewer({ address, source, byteCode }) {
-  let { contractFilePath, fileRoot } = source || {};
   let byteCodeHex = useMemo(() => {
     let buf = Buffer.from(ethers.utils.arrayify(byteCode));
     return hexy(buf, {
       width: 16,
     });
   }, [byteCode]);
-  let [tabs, setTabs] = useState([contractFilePath]);
-  let [selectedPath, setSelectedPath] = useState(contractFilePath);
-  useDocumentTitle(`${source.contractName} - ${address}`);
+  let { contractFilePath, fileRoot } = source || {};
   let filesByPath = keyFilesByPath(fileRoot) || {};
   // Add a synthetic "ByteCode" file
   filesByPath[BYTE_CODE] = {
@@ -187,7 +190,20 @@ export default function SourceViewer({ address, source, byteCode }) {
     name: "Byte Code",
     content: byteCodeHex,
   };
+  let { hash } = useLocation();
+  let initialPath = decodeFileHash(hash).path.substring(1);
+  let initialSelection = decodeFileHash(hash).selection;
+  if (!filesByPath[initialPath]) {
+    initialPath = contractFilePath;
+  }
+  let [selectedPath, setSelectedPath] = useState(initialPath);
   let selectedFile = filesByPath[selectedPath];
+  let [tabs, setTabs] = useState(
+    contractFilePath === initialPath
+      ? [initialPath]
+      : [contractFilePath, initialPath]
+  );
+  useDocumentTitle(`${selectedFile.name} - ${address}`);
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
       <Grid
@@ -231,11 +247,51 @@ export default function SourceViewer({ address, source, byteCode }) {
           <Grid item xs={true}>
             <Editor
               height="100%"
-              options={{ readOnly: true }}
-              path={selectedPath}
+              options={{
+                readOnly: true,
+                glyphMargin: true,
+                minimap: {
+                  size: "proportional",
+                  scale: 2,
+                  showSlider: "always",
+                },
+              }}
               theme="vs-dark"
               defaultLanguage={"sol"}
-              defaultValue={selectedFile ? selectedFile.content : ""}
+              loading={<CircularProgress />}
+              path={`eth-source://${address}/${selectedPath}`}
+              value={selectedFile ? selectedFile.content : ""}
+              beforeMount={(monaco) => {
+                monaco.editor.onDidCreateEditor((editor) => {
+                  let isInitializing = true;
+                  editor.onDidChangeModel((e) => {
+                    if (isInitializing) {
+                      isInitializing = false;
+                      if (initialSelection) {
+                        editor.setSelection({
+                          ...initialSelection,
+                          startColumn: 1,
+                          endColumn: 1,
+                        });
+                        editor.revealLinesInCenter(
+                          initialSelection.startLineNumber,
+                          initialSelection.endLineNumber
+                        );
+                      }
+                    }
+                    window.location.hash = encodeFileHash({
+                      path: editor.getModel().uri.path,
+                      selection: editor.getSelection(),
+                    });
+                  });
+                  editor.onDidChangeCursorSelection((e) => {
+                    window.location.hash = encodeFileHash({
+                      path: editor.getModel().uri.path,
+                      selection: e.selection,
+                    });
+                  });
+                });
+              }}
             />
           </Grid>
         </Grid>

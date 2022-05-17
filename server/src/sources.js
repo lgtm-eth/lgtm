@@ -129,6 +129,8 @@ async function gatherEtherscanSource(address) {
   };
   return {
     address,
+    // TODO: include ABI so we can do nice lookups
+    // ABI: result.ABI,
     contractName,
     contractFileName: contractFile.name,
     contractFilePath: contractFile.path,
