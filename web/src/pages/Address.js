@@ -116,7 +116,15 @@ export default function Address() {
     );
   }
   if (info.redirect) {
-    return <Navigate to={info.redirect.to} />;
+    // Preserve the hash on redirect
+    return (
+      <Navigate
+        to={{
+          pathname: info.redirect.to,
+          hash: window.location.hash,
+        }}
+      />
+    );
   }
   if (info.contract) {
     return (
