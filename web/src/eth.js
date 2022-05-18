@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { useQuery } from "react-query";
 
 // To avoid init during SSR
-const isBrowser = typeof window !== "undefined";
+// const isBrowser = typeof window !== "undefined";
 
 // const providerOptions = {
 //   walletconnect: {
@@ -32,26 +32,23 @@ const isBrowser = typeof window !== "undefined";
 //   });
 // }
 
-let _alchemyProvider = null;
-if (isBrowser) {
-  _alchemyProvider = new ethers.providers.AlchemyWebSocketProvider(
-    process.env.REACT_APP_ETH_NETWORK_NAME,
-    process.env.REACT_APP_ALCHEMY_KEY
-  );
-}
+let _provider = null; // until used
+// let _signer = null; // until connected
 
-let _current = null;
-if (isBrowser) {
-  _current = {
-    provider: _alchemyProvider,
-    signer: null, // until connected
-  };
+function provider() {
+  if (!_provider) {
+    _provider = new ethers.providers.AlchemyWebSocketProvider(
+      process.env.REACT_APP_ETH_NETWORK_NAME,
+      process.env.REACT_APP_ALCHEMY_KEY
+    );
+  }
+  return _provider;
 }
 
 export function useLookupAddress(address) {
   const { data } = useQuery(
     ["lookupAddress", address],
-    () => _current.provider.lookupAddress(address),
+    () => provider().lookupAddress(address),
     {
       refetchOnWindowFocus: false,
       refetchOnMount: true,
