@@ -93,6 +93,7 @@ export default function Address() {
     () =>
       fetch(`${STORAGE_BASE_URL}/address/${address}.json`).then(async (res) => {
         if (res.ok) {
+          await Api.refreshAddressInfo({ address });
           return res.json();
         }
         await Api.refreshAddressInfo({ address });
