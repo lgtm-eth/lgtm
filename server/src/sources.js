@@ -1,8 +1,10 @@
-const { ethers } = require("./eth");
-const etherscan = require("./etherscan");
+const ethers = require("ethers");
 const _ = require("lodash");
 const parser = require("@solidity-parser/parser");
 const LRU = require("lru-cache");
+const realEtherscan = require("./etherscan");
+/* mutable for testing */
+let etherscan = realEtherscan;
 const cache = new LRU({
   max: 100,
   maxAge: 10 * 60 * 1_000, // 10m
@@ -10,55 +12,87 @@ const cache = new LRU({
 
 function buildFileInfo(fileName, content) {
   let info = {
-    contracts: [],
+    contracts: {},
+    functions: {},
+    // TODO
+    // constructor: {}
   };
   if (fileName.endsWith(".sol")) {
-    const ast = parser.parse(content, { tolerant: true, loc: true });
+    const ast = parser.parse(content, {
+      tolerant: true,
+      loc: true,
+      range: true,
+    });
     parser.visit(ast, {
-      ContractDefinition: (node) => info.contracts.push(node.name),
+      ContractDefinition: (node) => {
+        let bases = [];
+        try {
+          bases = node.baseContracts.map((base) => base.baseName.namePath);
+          info.contracts[node.name] = {
+            position: node.loc.start,
+            bases,
+          };
+        } catch (ignore) {
+          console.log(
+            "ignoring contract definition parse error",
+            node.name,
+            ignore
+          );
+        }
+      },
+      FunctionDefinition: (node) => {
+        if (node.isConstructor) {
+          // console.log("skipping constructor");
+          return;
+        }
+        if (["public", "external"].indexOf(node.visibility) === -1) {
+          // console.log("skipping non-public method", node.name);
+          return;
+        }
+        try {
+          let inputs = node.parameters.map((p) =>
+            ethers.utils.ParamType.from(
+              content.substring(p.range[0], p.range[1])
+            )
+          );
+          let frag = ethers.utils.FunctionFragment.from({
+            type: "function",
+            constant: true,
+            name: node.name,
+            inputs,
+          });
+          let sig = ethers.utils.Interface.getSighash(frag);
+          info.functions[sig] = {
+            name: node.name,
+            fragment: frag.format(),
+            position: node.loc.start,
+            inputs: node.parameters.map((p, i) => ({
+              name: p.name,
+              type: inputs[i].type,
+              position: p.loc.end,
+            })),
+          };
+        } catch (ignore) {
+          console.log(
+            "ignoring function definition parse error",
+            node.name,
+            ignore
+          );
+        }
+      },
     });
   }
   return info;
 }
 
-function buildFileRoot(filesByPath) {
-  let fileRoot = {
-    type: "directory",
-    name: "",
-    path: "",
-    children: [],
-  };
+function keyPathsByContract(filesByPath) {
+  let contractPaths = {};
   Object.keys(filesByPath).forEach((path) => {
-    let parts = path.split("/");
-    let dir = fileRoot;
-    let fileName = parts[parts.length - 1];
-    // First make/find the directories (e.g. mkdir -p)
-    for (let i = 0; i < parts.length - 1; i++) {
-      let nextDirName = parts[i];
-      let nextDir = dir.children.find((d) => d.name === nextDirName);
-      if (!nextDir) {
-        nextDir = {
-          type: "directory",
-          name: nextDirName,
-          path: dir.path ? `${dir.path}/${nextDirName}` : nextDirName,
-          children: [],
-        };
-        dir.children.push(nextDir);
-        // console.log("+dir: ", nextDirName)
-      }
-      dir = nextDir;
-    }
-    // Add the file at the found directory.
-    dir.children.push({
-      type: "file",
-      name: fileName,
-      path,
-      content: filesByPath[path].content,
-      info: buildFileInfo(fileName, filesByPath[path].content),
-    });
-    // console.log("+file: ", fileName)
+    Object.keys(filesByPath[path].info.contracts || {}).forEach(
+      (contract) => (contractPaths[contract] = path)
+    );
   });
-  return fileRoot;
+  return contractPaths;
 }
 
 function findContractFile(dir, contractName) {
@@ -86,17 +120,13 @@ function cleanupPath(path) {
 }
 
 async function gatherEtherscanSource(address) {
-  let ethRes = await etherscan.contract.getsourcecode({ address });
+  let ethRes = await etherscan.getSource({ address });
   let result = ethRes?.data?.result[0];
-  let K = new ethers.utils.Interface(result.ABI);
-  let contractName = result.ContractName;
-  let deployParams = K._abiCoder.decode(
-    K.deploy.inputs,
-    "0x" + result.ConstructorArguments
-  );
-  deployParams = _.omit(deployParams, _.range(0, deployParams.length));
-  deployParams = _.mapValues(deployParams, (v) => v.toString());
+  let mainContractName = result.ContractName;
   let sourceCodeBlob = result.SourceCode;
+  let constructorInputs = result.ConstructorArguments
+    ? "0x" + result.ConstructorArguments
+    : "";
   if (sourceCodeBlob.startsWith("{{") && sourceCodeBlob.endsWith("}}")) {
     sourceCodeBlob = sourceCodeBlob.slice(1, -1);
   }
@@ -111,7 +141,8 @@ async function gatherEtherscanSource(address) {
     // When we can't parse it as JSON, treat it as a single file blob.
     sourceCode = {
       sources: {
-        [`contracts/${contractName}.${sourceLanguage}`]: {
+        // default, in case we can't analyze the source
+        [`contracts/${mainContractName}.${sourceLanguage}`]: {
           content: sourceCodeBlob,
         },
       },
@@ -121,20 +152,21 @@ async function gatherEtherscanSource(address) {
   let filesByPath = _.mapKeys(sourceCode.sources, (info, path) =>
     cleanupPath(path)
   );
-  let fileRoot = buildFileRoot(filesByPath);
-  let contractFile = findContractFile(fileRoot, contractName) || {
-    // default, in case we can't analyze the source code
-    name: `${contractName}.${sourceLanguage}`,
-    path: `contracts/${contractName}.${sourceLanguage}`,
-  };
+  filesByPath = _.mapValues(filesByPath, ({ content }, path) => ({
+    content,
+    info: buildFileInfo(path, content),
+  }));
+  let contractPaths = keyPathsByContract(filesByPath);
+  let mainContractFilePath =
+    contractPaths[mainContractName] ||
+    `contracts/${mainContractName}.${sourceLanguage}`;
   return {
     address,
     ABI: result.ABI,
-    contractName,
-    contractFileName: contractFile.name,
-    contractFilePath: contractFile.path,
-    deployParams,
-    fileRoot,
+    mainContractName,
+    contractPaths,
+    constructorInputs,
+    files: filesByPath,
   };
 }
 async function getEtherscanSource(address) {
@@ -148,4 +180,11 @@ async function getEtherscanSource(address) {
 
 exports = module.exports = {
   getEtherscanSource,
+
+  // Visible for testing
+  buildFileInfo,
+  gatherEtherscanSource,
+  cache,
+  setFakeEtherscan: (fakeEtherscan) => (etherscan = fakeEtherscan),
+  resetRealEtherscan: () => (etherscan = realEtherscan),
 };
