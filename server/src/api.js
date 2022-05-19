@@ -27,7 +27,6 @@ async function gatherAddressInfo({ address }) {
     return {
       contract: {
         address,
-        byteCode,
         source,
       },
     };

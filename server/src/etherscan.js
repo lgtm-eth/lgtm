@@ -27,19 +27,17 @@ const apiClient = axios.create({
 //   return res
 // })
 
-const API = _.mapValues(API_MODULES, (methods, module) =>
-  _.mapValues(
-    methods,
-    (action) => async (more) =>
-      apiClient.get("/api", {
-        params: {
-          ...more,
-          module,
-          action,
-          apikey: ETHERSCAN_API_KEY,
-        },
-      })
-  )
-);
+async function getSource({ address }) {
+  return apiClient.get("/api", {
+    params: {
+      address,
+      module: "contract",
+      action: "getsourcecode",
+      apikey: ETHERSCAN_API_KEY,
+    },
+  });
+}
 
-exports = module.exports = API;
+exports = module.exports = {
+  getSource,
+};

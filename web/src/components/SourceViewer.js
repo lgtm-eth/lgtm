@@ -10,14 +10,11 @@ import {
   useTheme,
   Tabs,
   Tab,
-  Divider,
   CircularProgress,
 } from "@mui/material";
-import { ChevronRight, Folder, Article, Code } from "@mui/icons-material";
+import { ChevronRight, Folder, Article } from "@mui/icons-material";
 import _ from "lodash";
-import { hexy } from "hexy";
 import { useDocumentTitle } from "../hooks";
-import { ethers } from "ethers";
 import Editor, { loader } from "@monaco-editor/react";
 import { decodeFileHash, encodeFileHash } from "../utils/fileHashCodec";
 import { useLocation } from "react-router-dom";
@@ -108,29 +105,48 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
   );
 }
 
-const BYTE_CODE = "Byte Code";
-
-function ByteCodeListItem({ onPathSelected, selectedPath }) {
-  let theme = useTheme();
-  return (
-    <ListItemButton
-      sx={{ pl: 2, color: theme.palette.primary.light }}
-      dense
-      onClick={() => onPathSelected(BYTE_CODE)}
-      selected={selectedPath === BYTE_CODE}
-    >
-      <ListItemIcon>
-        <Code sx={{ mr: 1 }} />
-      </ListItemIcon>
-      <ListItemText
-        primary="Byte Code"
-        primaryTypographyProps={{ variant: "overline" }}
-      />
-    </ListItemButton>
-  );
+function buildFileTree({ files }) {
+  let root = {
+    type: "directory",
+    name: "",
+    path: "",
+    children: [],
+  };
+  Object.keys(files).forEach((path) => {
+    let parts = path.split("/");
+    let dir = root;
+    let fileName = parts[parts.length - 1];
+    // First make/find the directories (e.g. mkdir -p)
+    for (let i = 0; i < parts.length - 1; i++) {
+      let nextDirName = parts[i];
+      let nextDir = dir.children.find((d) => d.name === nextDirName);
+      if (!nextDir) {
+        nextDir = {
+          type: "directory",
+          name: nextDirName,
+          path: dir.path ? `${dir.path}/${nextDirName}` : nextDirName,
+          children: [],
+        };
+        dir.children.push(nextDir);
+        // console.log("+dir: ", nextDirName)
+      }
+      dir = nextDir;
+    }
+    // Add the file at the found directory.
+    dir.children.push({
+      type: "file",
+      name: fileName,
+      path,
+      content: files[path].content,
+      info: files[path].info,
+    });
+    // console.log("+file: ", fileName)
+  });
+  return root;
 }
 
-function FileList({ root, onPathSelected, selectedPath = "" }) {
+function FileList({ files, onPathSelected, selectedPath = "" }) {
+  let root = useMemo(() => buildFileTree({ files }), [files]);
   let dirs = _.orderBy(root.children, "name").filter(
     ({ type }) => type === "directory"
   );
@@ -153,56 +169,30 @@ function FileList({ root, onPathSelected, selectedPath = "" }) {
           selectedPath={selectedPath}
         />
       ))}
-      {/* TODO: */}
-      {false && <Divider />}
-      {false && (
-        <ByteCodeListItem
-          onPathSelected={onPathSelected}
-          selectedPath={selectedPath}
-        />
-      )}
     </FileListNav>
   );
 }
 
-function keyFilesByPath(node, results = {}) {
-  if (node.type === "file") {
-    results[node.path] = node;
-    return results;
-  }
-  node.children.forEach((child) => (results = keyFilesByPath(child, results)));
-  return results;
-}
-
-export default function SourceViewer({ address, source, byteCode }) {
-  let byteCodeHex = useMemo(() => {
-    let buf = Buffer.from(ethers.utils.arrayify(byteCode));
-    return hexy(buf, {
-      width: 16,
-    });
-  }, [byteCode]);
-  let { contractFilePath, fileRoot } = source || {};
-  let filesByPath = keyFilesByPath(fileRoot) || {};
-  // Add a synthetic "ByteCode" file
-  filesByPath[BYTE_CODE] = {
-    path: BYTE_CODE,
-    type: "file",
-    name: "Byte Code",
-    content: byteCodeHex,
-  };
+export default function SourceViewer({
+  addressInfo,
+  call = "0x23b872dd000000000000000000000000423fa6f71071926cf8044084d8b0086cd053061e0000000000000000000000003513fda59c1932232553831ca4d3de32f731b62c0000000000000000000000000000000000000000000000000000000000000cb8",
+}) {
+  let { address, source } = addressInfo;
+  let { files, mainContractName, contractPaths } = source || {};
+  let mainContractPath = (contractPaths || {})[mainContractName] || "";
   let { hash } = useLocation();
   let initialPath = decodeFileHash(hash).path.substring(1);
   let initialSelection = decodeFileHash(hash).selection;
-  if (!filesByPath[initialPath]) {
-    initialPath = contractFilePath;
+  if (!files[initialPath]) {
+    initialPath = mainContractPath;
+  }
+  if (!files[initialPath]) {
+    initialPath = Object.keys(files || {})[0];
   }
   let [selectedPath, setSelectedPath] = useState(initialPath);
-  let selectedFile = filesByPath[selectedPath];
-  let [tabs, setTabs] = useState(
-    contractFilePath === initialPath
-      ? [initialPath]
-      : [contractFilePath, initialPath]
-  );
+  let selectedFile = files[selectedPath];
+  let [tabs, setTabs] = useState(_.uniq([mainContractPath, initialPath]));
+  console.log({ tabs });
   useDocumentTitle(`${selectedFile.name} - ${address}`);
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
@@ -216,7 +206,7 @@ export default function SourceViewer({ address, source, byteCode }) {
         }}
       >
         <FileList
-          root={fileRoot}
+          files={files}
           onPathSelected={(path) => {
             if (tabs.indexOf(path) === -1) {
               setTabs([path].concat(tabs));
@@ -240,7 +230,7 @@ export default function SourceViewer({ address, source, byteCode }) {
               variant="standard"
             >
               {tabs.map((tab) => (
-                <Tab key={tab} label={filesByPath[tab].name} value={tab} />
+                <Tab key={tab} label={tab.split("/").pop()} value={tab} />
               ))}
             </Tabs>
           </Grid>
@@ -262,6 +252,50 @@ export default function SourceViewer({ address, source, byteCode }) {
               path={`eth-source://${address}/${selectedPath}`}
               value={selectedFile ? selectedFile.content : ""}
               beforeMount={(monaco) => {
+                monaco.languages.registerInlayHintsProvider("sol", {
+                  provideInlayHints: function (model, range, token) {
+                    let path = model.uri.path.substring(1);
+                    let functions = files[path]?.info?.functions || {};
+                    return {
+                      hints: Object.keys(functions).map((sig) => ({
+                        position: {
+                          lineNumber: functions[sig].position.line,
+                          column: functions[sig].position.column,
+                        },
+                        label: sig,
+                        paddingLeft: false,
+                        paddingRight: false,
+                      })),
+                      dispose: () => {},
+                    };
+                  },
+                });
+                // monaco.languages.registerCodeLensProvider("sol", {
+                //   provideCodeLenses: function (model, token) {
+                //     return {
+                //       lenses: [
+                //         {
+                //           range: {
+                //             startLineNumber: 1,
+                //             startColumn: 1,
+                //             endLineNumber: 2,
+                //             endColumn: 1,
+                //           },
+                //           id: "0x23b872dd",
+                //           command: {
+                //             id: "TODO",
+                //             title: "0x23b872dd\ntest 1234\nand yet another",
+                //             tooltip: "mintCommunitySale",
+                //           },
+                //         },
+                //       ],
+                //       dispose: () => {},
+                //     };
+                //   },
+                //   resolveCodeLens: function (model, codeLens, token) {
+                //     return codeLens;
+                //   },
+                // });
                 monaco.editor.onDidCreateEditor((editor) => {
                   let isInitializing = true;
                   editor.onDidChangeModel((e) => {
