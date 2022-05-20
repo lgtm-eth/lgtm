@@ -1,18 +1,25 @@
 import React, { useMemo, useState } from "react";
 import {
-  Grid,
+  CircularProgress,
   Collapse,
+  Grid,
+  IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   styled,
+  Typography,
   useTheme,
   Tabs,
   Tab,
-  CircularProgress,
 } from "@mui/material";
-import { ChevronRight, Folder, Article } from "@mui/icons-material";
+import {
+  ChevronRight,
+  Folder,
+  Article,
+  CloseRounded,
+} from "@mui/icons-material";
 import _ from "lodash";
 import { useDocumentTitle } from "../hooks";
 import Editor, { loader } from "@monaco-editor/react";
@@ -24,6 +31,7 @@ loader.config({
   },
 });
 
+// TODO: reconcile either styled component or inline styles
 const FileListNav = styled(List)({
   "& .MuiListItemButton-root": {
     pt: 0.5,
@@ -47,20 +55,20 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
   if (node.type === "file") {
     return (
       <ListItemButton
-        sx={{ pl: 2 + 2 * (inset - 1), color: theme.palette.secondary.light }}
+        sx={{ pl: 1 + inset, color: theme.palette.secondary.light }}
         dense
         onClick={() => onPathSelected(node.path)}
         selected={selectedPath === node.path}
       >
         <ListItemIcon sx={{ color: theme.palette.secondary.light }}>
-          <ChevronRight sx={{ visibility: "hidden", mr: 1 }} />
+          <ChevronRight sx={{ visibility: "hidden", mr: 0.25 }} />
           <Article />
         </ListItemIcon>
         <ListItemText
           primary={node.name}
           primaryTypographyProps={{
             variant: "code",
-            fontSize: 14,
+            fontSize: 12,
           }}
         />
       </ListItemButton>
@@ -69,13 +77,13 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
   return (
     <>
       <ListItemButton
-        sx={{ height: 36, pl: 2 + 2 * inset }}
+        sx={{ height: 36, pl: 1 + inset }}
         dense
         onClick={() => setExpanded(!isExpanded)}
       >
         <ListItemIcon>
           <ChevronRight
-            sx={{ mr: 1, transform: isExpanded ? "rotate(90deg)" : null }}
+            sx={{ mr: 0.25, transform: isExpanded ? "rotate(90deg)" : null }}
           />
           <Folder />
         </ListItemIcon>
@@ -83,8 +91,10 @@ function FileListItem({ node, inset = 0, onPathSelected, selectedPath }) {
           primary={node.name}
           primaryTypographyProps={{
             variant: "code",
-            fontSize: 14,
-            color: theme.palette.text.secondary,
+            fontSize: 12,
+            color: selectedPath.startsWith(node.path)
+              ? theme.palette.text.primary
+              : theme.palette.text.secondary,
           }}
         />
       </ListItemButton>
@@ -152,12 +162,13 @@ function FileList({ files, onPathSelected, selectedPath = "" }) {
   );
   return (
     <FileListNav
+      dense
       sx={{
-        // width: '100%',
-        height: "100%",
+        pt: 6,
+        bgcolor: "background.menu",
+        height: (theme) => `calc(100vh - ${theme.spacing(14)})`,
+        overflow: "scroll",
         flexGrow: 1,
-        // maxHeight: 300,
-        // '& ul': { padding: 0 },
       }}
     >
       {dirs.map((dir) => (
@@ -179,7 +190,8 @@ export default function SourceViewer({
 }) {
   let { address, source } = addressInfo;
   let { files, mainContractName, contractPaths } = source || {};
-  let mainContractPath = (contractPaths || {})[mainContractName] || "";
+  let mainContractPath =
+    (contractPaths || {})[mainContractName] || Object.keys(files).pop();
   let { hash } = useLocation();
   let initialPath = decodeFileHash(hash).path.substring(1);
   let initialSelection = decodeFileHash(hash).selection;
@@ -192,15 +204,13 @@ export default function SourceViewer({
   let [selectedPath, setSelectedPath] = useState(initialPath);
   let selectedFile = files[selectedPath];
   let [tabs, setTabs] = useState(_.uniq([mainContractPath, initialPath]));
-  console.log({ tabs });
   useDocumentTitle(`${selectedFile.name} - ${address}`);
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
       <Grid
         item
         sx={{
-          width: 240,
-          paddingTop: 6,
+          width: 220,
           textAlign: "left",
           overflow: "scroll",
         }}
@@ -209,7 +219,7 @@ export default function SourceViewer({
           files={files}
           onPathSelected={(path) => {
             if (tabs.indexOf(path) === -1) {
-              setTabs([path].concat(tabs));
+              setTabs(_.uniq([mainContractPath].concat([path]).concat(tabs)));
             }
             setSelectedPath(path);
           }}
@@ -230,7 +240,48 @@ export default function SourceViewer({
               variant="standard"
             >
               {tabs.map((tab) => (
-                <Tab key={tab} label={tab.split("/").pop()} value={tab} />
+                <Tab
+                  sx={{
+                    pl: 1.5,
+                    pr: tab !== mainContractPath ? 0 : 1.5,
+                    pt: 0,
+                    pb: 0,
+                  }}
+                  key={tab}
+                  component="div"
+                  label={
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                      }}
+                    >
+                      {tab.split("/").pop()}
+                      {tab !== mainContractPath && (
+                        <IconButton
+                          size="small"
+                          color="secondary"
+                          sx={{
+                            height: "100%",
+                            p: 0,
+                            pl: 1,
+                            pr: 1,
+                            fontSize: 12,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (tab === selectedPath) {
+                              setSelectedPath(mainContractPath);
+                            }
+                            setTabs(_.without(tabs, tab));
+                          }}
+                        >
+                          <CloseRounded sx={{ fontSize: 12 }} />
+                        </IconButton>
+                      )}
+                    </Typography>
+                  }
+                  value={tab}
+                />
               ))}
             </Tabs>
           </Grid>
