@@ -9,6 +9,7 @@ const theme = createTheme({
     background: {
       default: "rgb(0, 3, 0)",
       paper: "rgb(0, 3, 0)",
+      menu: "rgb(5, 15, 5)",
     },
     primary: {
       main: "#1B5E20",
