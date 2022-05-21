@@ -5,8 +5,8 @@ const API_BASE_URL =
   // prettier-ignore
   process.env.NODE_ENV === "development"
     // ? "https://lgtm.info/app/api" :
-    ? "http://localhost:5001/lgtm-info-dev/us-central1/app/app/api" :
-    // ? "https://lgtm-info-dev.web.app/app/api" :
+    // ? "http://localhost:5001/lgtm-info-dev/us-central1/app/app/api" :
+    ? "https://lgtm-info-dev.web.app/app/api" :
       "/app/api";
 
 // These are the available API methods.
