@@ -204,13 +204,14 @@ export default function SourceViewer({
   let [selectedPath, setSelectedPath] = useState(initialPath);
   let selectedFile = files[selectedPath];
   let [tabs, setTabs] = useState(_.uniq([mainContractPath, initialPath]));
-  useDocumentTitle(`${selectedFile.name} - ${address}`);
+  useDocumentTitle(`${selectedPath.split("/").pop()} - ${address}`);
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
       <Grid
         item
         sx={{
           width: 220,
+          maxWidth: "40vw",
           textAlign: "left",
           overflow: "scroll",
         }}
