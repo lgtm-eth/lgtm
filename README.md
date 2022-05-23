@@ -19,6 +19,9 @@ and issue a pull request when it is ready to merge.
 
 To avoid conflicts, work-in-progress branches should sync any changes to avoid conflicts.
 
+TODO: share `sync` and `shove` scripts
+
+
 With the `sync` and `shove` helper scripts, the typical workflow for this looks like this:
 
 ```
