@@ -17,7 +17,7 @@ import { useQuery } from "react-query";
 
 function LoadingAddress() {
   return (
-    <AppBarLayout>
+    <AppBarLayout showEtherscan>
       <Container sx={{ textAlign: "center", pt: "30vh" }}>
         <CircularProgress />
       </Container>
@@ -28,7 +28,7 @@ function LoadingAddress() {
 function WalletAddress({ address }) {
   // let theme = useTheme();
   return (
-    <AppBarLayout>
+    <AppBarLayout showEtherscan>
       <Grid container>
         <Grid item xs={0} md={4} />
         <Grid xs={12} md={4} item sx={{ pl: 3, pr: 3 }}>
@@ -108,7 +108,7 @@ export default function Address() {
   }
   if (isError) {
     return (
-      <AppBarLayout>
+      <AppBarLayout showEtherscan>
         <Container sx={{ textAlign: "center", pt: "30vh" }}>
           <Error />
         </Container>
@@ -128,7 +128,7 @@ export default function Address() {
   }
   if (info.contract) {
     return (
-      <AppBarLayout hideFooter>
+      <AppBarLayout hideFooter showEtherscan>
         <SourceViewer addressInfo={info.contract} />
       </AppBarLayout>
     );
