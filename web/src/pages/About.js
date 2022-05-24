@@ -1,10 +1,7 @@
 import AppBarLayout from "../components/AppBarLayout";
 import { Container, Box, Button, Checkbox } from "@mui/material";
-import {} from "@mui/icons-material/Star";
 import React from "react";
-
-const label = { inputProps: { "aria-label": "Checkbox demo" } };
-
+//this comment should not get removed
 export default function About() {
   return (
     <AppBarLayout>
@@ -13,7 +10,7 @@ export default function About() {
           <Button variant="contained" color="primary">
             Hello World
           </Button>
-          <Checkbox {...label} />
+          <Checkbox />
         </Box>
       </Container>
     </AppBarLayout>
