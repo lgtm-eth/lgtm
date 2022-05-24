@@ -112,7 +112,7 @@ function Footer() {
   );
 }
 
-export default function AppBarLayout({ children, hideFooter }) {
+export default function AppBarLayout({ children, hideFooter, showEtherscan }) {
   let theme = useTheme();
   let [eyes, setEyes] = useState({ clientX: 0, clientY: 0 });
   // eslint-disable-next-line
@@ -152,17 +152,19 @@ export default function AppBarLayout({ children, hideFooter }) {
             />
             <Wordmark height={48} />
           </Box>
-          <Button
-            color="secondary"
-            variant={"text"}
-            startIcon={<Etherscan />}
-            endIcon={<OpenInNew />}
-            target="_blank"
-            size="large"
-            href={`https://etherscan.io${window.location.pathname}`}
-          >
-            Explore on Etherscan
-          </Button>
+          {showEtherscan && (
+            <Button
+              color="secondary"
+              variant={"text"}
+              startIcon={<Etherscan />}
+              endIcon={<OpenInNew />}
+              target="_blank"
+              size="large"
+              href={`https://etherscan.io${window.location.pathname}`}
+            >
+              Explore on Etherscan
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
       <main>

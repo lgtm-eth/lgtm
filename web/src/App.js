@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route, useParams, Navigate } from "react-router-dom";
+import About from "./pages/About";
 import Address from "./pages/Address";
 import Transaction from "./pages/Transaction";
 import Splash from "./pages/Splash";
@@ -22,6 +23,8 @@ function App() {
       <Route path="/address/:address" element={<Address />} />
       {/* TODO: */}
       <Route path="/tx/:tx" element={<Transaction />} />
+      {/* TODO: */}
+      <Route path="/about" element={<About />} />
       <Route path="*" element={<Splash />} />
     </Routes>
   );
