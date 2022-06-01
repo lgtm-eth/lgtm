@@ -1,14 +1,19 @@
 import AppBarLayout from "../components/AppBarLayout";
-import { Container, Grid, Typography } from "@mui/material";
+import { Container, Grid, Typography, useTheme } from "@mui/material";
 import React from "react";
 import Wordmark from "../Wordmark";
 
 export default function About() {
+  let theme = useTheme();
   return (
     <AppBarLayout>
       <Container sx={{ textAlign: "center", p: 4, mt: 10 }}>
         <Grid container spacing={0} columns={{ xs: 4, sm: 4, md: 24 }}>
-          <Grid item sm={-1000} md={4} sx={{ m: 0, p: 0 }}>
+          <Grid
+            item
+            md={4}
+            sx={{ [theme.breakpoints.down("md")]: { display: "none" } }}
+          >
             <svg height="200" width="200">
               <circle
                 cx="100"
@@ -20,7 +25,7 @@ export default function About() {
               />
             </svg>
           </Grid>
-          <Grid item xs={4} md={16}>
+          <Grid item md={16} sx={{ [theme.breakpoints.down("md")]: { pr: 4 } }}>
             <Wordmark height={300} />
             <Typography variant="h4" sx={{ pb: 5 }}>
               Building Tools for Trust
@@ -71,7 +76,11 @@ export default function About() {
               sunt in culpa qui officia deserunt mollit anim id est laborum.
             </Typography>
           </Grid>
-          <Grid item sm={1000} md={4} sx={{ mt: 50 }}>
+          <Grid
+            item
+            md={4}
+            sx={{ mt: 50, [theme.breakpoints.down("md")]: { display: "none" } }}
+          >
             <svg height="200" width="200">
               <circle
                 cx="100"
