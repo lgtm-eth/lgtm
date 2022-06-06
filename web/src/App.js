@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, useParams, Navigate } from "react-router-dom";
-import About from "./pages/About";
+//import About from "./pages/About";
 import Address from "./pages/Address";
 import Transaction from "./pages/Transaction";
 import Splash from "./pages/Splash";
