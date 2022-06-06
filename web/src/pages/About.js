@@ -8,12 +8,13 @@ export default function About() {
   return (
     <AppBarLayout>
       <Container sx={{ textAlign: "center", p: 4, mt: 10 }}>
-        <Grid container spacing={0} columns={{ xs: 4, sm: 4, md: 24 }}>
+        <Grid container>
           <Grid
             item
-            md={4}
+            md={2}
             sx={{ [theme.breakpoints.down("md")]: { display: "none" } }}
           >
+            {/* placeholder image */}
             <svg height="200" width="200">
               <circle
                 cx="100"
@@ -25,11 +26,12 @@ export default function About() {
               />
             </svg>
           </Grid>
-          <Grid item md={16} sx={{ [theme.breakpoints.down("md")]: { pr: 4 } }}>
+          <Grid item md={8} sx={{ [theme.breakpoints.down("md")]: { pr: 4 } }}>
             <Wordmark height={300} />
             <Typography variant="h4" sx={{ pb: 5 }}>
               Building Tools for Trust
             </Typography>
+            {/* placeholder text */}
             <Typography variant="body1" textAlign="left">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
               eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
@@ -78,9 +80,10 @@ export default function About() {
           </Grid>
           <Grid
             item
-            md={4}
+            md={2}
             sx={{ mt: 50, [theme.breakpoints.down("md")]: { display: "none" } }}
           >
+            {/* placeholder image */}
             <svg height="200" width="200">
               <circle
                 cx="100"

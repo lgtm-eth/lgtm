@@ -24,7 +24,7 @@ function App() {
       {/* TODO: */}
       <Route path="/tx/:tx" element={<Transaction />} />
       {/* TODO: */}
-      <Route path="/about" element={<About />} />
+      {/*<Route path="/about" element={<About />} />*/}
       <Route path="*" element={<Splash />} />
     </Routes>
   );
