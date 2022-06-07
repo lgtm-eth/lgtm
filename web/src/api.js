@@ -4,9 +4,9 @@ import { useQuery } from "react-query";
 const API_BASE_URL =
   // prettier-ignore
   process.env.NODE_ENV === "development"
-    // ? "https://lgtm.info/app/api" :
+    ? "https://lgtm.info/app/api" :
     // ? "http://localhost:5001/lgtm-info-dev/us-central1/app/app/api" :
-    ? "https://lgtm-info-dev.web.app/app/api" :
+    // ? "https://lgtm-info-dev.web.app/app/api" :
       "/app/api";
 
 // These are the available API methods.
@@ -66,6 +66,41 @@ function useApiMethod(name, method, request, nonce) {
     response: data,
     reload: refetch,
   };
+}
+
+const STORAGE_BASE_URL = process.env.REACT_APP_STORAGE_BASE_URL;
+export function useAddressInfo({ address }) {
+  let {
+    isLoading,
+    isError,
+    data: info,
+  } = useQuery(
+    ["addressInfo", address],
+    () =>
+      fetch(`${STORAGE_BASE_URL}/address/${address}.json`).then(async (res) => {
+        if (res.ok) {
+          return res.json();
+        }
+        await Api.refreshAddressInfo({ address });
+        throw new Error(`addressInfo unavailable, triggered refresh`);
+      }),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    }
+  );
+  return { isLoading, isError, info };
+}
+
+export function useContractSource({ address }) {
+  let {
+    isLoading,
+    isError,
+    info: {
+      contract: { source },
+    },
+  } = useAddressInfo({ address });
+  return { isLoading, isError, source };
 }
 
 /**
