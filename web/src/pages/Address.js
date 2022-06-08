@@ -1,6 +1,6 @@
 import AppBarLayout from "../components/AppBarLayout";
 import React from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useSearchParams, useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -10,10 +10,9 @@ import {
   Typography,
 } from "@mui/material";
 import { Error } from "@mui/icons-material";
-import { Api } from "../api";
+import { useAddressInfo } from "../api";
 import { useLookupAddress } from "../eth";
 import SourceViewer from "../components/SourceViewer";
-import { useQuery } from "react-query";
 
 function LoadingAddress() {
   return (
@@ -81,28 +80,10 @@ function WalletInfoTable({ address, sx }) {
   );
 }
 
-const STORAGE_BASE_URL = process.env.REACT_APP_STORAGE_BASE_URL;
 export default function Address() {
   let { address } = useParams();
-  let {
-    isLoading,
-    isError,
-    data: info,
-  } = useQuery(
-    ["addressInfo", address],
-    () =>
-      fetch(`${STORAGE_BASE_URL}/address/${address}.json`).then(async (res) => {
-        if (res.ok) {
-          return res.json();
-        }
-        await Api.refreshAddressInfo({ address });
-        throw new Error(`addressInfo unavailable, triggered refresh`);
-      }),
-    {
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-    }
-  );
+  let [searchParams] = useSearchParams();
+  let { isLoading, isError, info } = useAddressInfo({ address });
   if (isLoading) {
     return <LoadingAddress />;
   }
@@ -121,15 +102,20 @@ export default function Address() {
       <Navigate
         to={{
           pathname: info.redirect.to,
+          search: window.location.search,
           hash: window.location.hash,
         }}
       />
     );
   }
   if (info.contract) {
+    let initialSearchInput = searchParams?.get("q");
     return (
       <AppBarLayout hideFooter showEtherscan>
-        <SourceViewer addressInfo={info.contract} />
+        <SourceViewer
+          address={address}
+          initialSearchInput={initialSearchInput || ""}
+        />
       </AppBarLayout>
     );
   }

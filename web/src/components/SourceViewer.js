@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   CircularProgress,
   Collapse,
@@ -13,6 +13,11 @@ import {
   useTheme,
   Tabs,
   Tab,
+  TextField,
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
 } from "@mui/material";
 import {
   ChevronRight,
@@ -22,9 +27,11 @@ import {
 } from "@mui/icons-material";
 import _ from "lodash";
 import { useDocumentTitle } from "../hooks";
-import Editor, { loader } from "@monaco-editor/react";
-import { decodeFileHash, encodeFileHash } from "../utils/fileHashCodec";
-import { useLocation } from "react-router-dom";
+import Editor, { loader, useMonaco } from "@monaco-editor/react";
+import { useContractSource } from "../api";
+import { ethers } from "ethers";
+import { useLookupAddress } from "../eth";
+import { etherscanUrl } from "../utils/etherscan";
 loader.config({
   paths: {
     vs: process.env.PUBLIC_URL + "/vs",
@@ -155,7 +162,10 @@ function buildFileTree({ files }) {
   return root;
 }
 
-function FileList({ files, onPathSelected, selectedPath = "" }) {
+function FileList({ address, onPathSelected, selectedPath = "" }) {
+  let {
+    source: { files },
+  } = useContractSource({ address });
   let root = useMemo(() => buildFileTree({ files }), [files]);
   let dirs = _.orderBy(root.children, "name").filter(
     ({ type }) => type === "directory"
@@ -164,7 +174,6 @@ function FileList({ files, onPathSelected, selectedPath = "" }) {
     <FileListNav
       dense
       sx={{
-        pt: 6,
         bgcolor: "background.menu",
         height: (theme) => `calc(100vh - ${theme.spacing(14)})`,
         overflow: "scroll",
@@ -184,27 +193,340 @@ function FileList({ files, onPathSelected, selectedPath = "" }) {
   );
 }
 
-export default function SourceViewer({
-  addressInfo,
-  call = "0x23b872dd000000000000000000000000423fa6f71071926cf8044084d8b0086cd053061e0000000000000000000000003513fda59c1932232553831ca4d3de32f731b62c0000000000000000000000000000000000000000000000000000000000000cb8",
-}) {
-  let { address, source } = addressInfo;
-  let { files, mainContractName, contractPaths } = source || {};
-  let mainContractPath =
-    (contractPaths || {})[mainContractName] || Object.keys(files).pop();
-  let { hash } = useLocation();
-  let initialPath = decodeFileHash(hash).path.substring(1);
-  let initialSelection = decodeFileHash(hash).selection;
-  if (!files[initialPath]) {
-    initialPath = mainContractPath;
+function identifyExternal({ source }) {
+  let { files, mainContractName, contractPaths } = source;
+
+  let kNames = [mainContractName];
+  let externals = {};
+  while (kNames.length) {
+    let kName = kNames.pop();
+    let kPath = contractPaths[kName];
+    // TODO: consider excluding interfaces
+    let {
+      // TODO: move `functions` into the corresponding contract
+      //       to handle multiple contracts defined in the same file
+      info: { contracts, functions },
+    } = files[kPath];
+    let { bases } = contracts[kName];
+    kNames = kNames.concat(bases || []);
+    // NOTE: This .assign() sequence makes the child definition override the parent.
+    //       (We start growing `externals` with the child's definitions first.)
+    externals = Object.assign(
+      {},
+      _.mapValues(functions, (fn) => ({
+        ...fn,
+        contractName: kName,
+        contractPath: kPath,
+      })),
+      externals
+    );
   }
-  if (!files[initialPath]) {
-    initialPath = Object.keys(files || {})[0];
+  return externals;
+}
+
+function decodeCall(iface, externals, input) {
+  let prefix = (input || "").substring(0, 10) || "";
+  let fn = externals[prefix];
+  if (!fn) {
+    return null;
   }
-  let [selectedPath, setSelectedPath] = useState(initialPath);
-  let selectedFile = files[selectedPath];
-  let [tabs, setTabs] = useState(_.uniq([mainContractPath, initialPath]));
+  let decoded = _.mapValues(_.keyBy(fn.inputs, "name"), (param) => ({
+    param,
+    value: null, // will only be set if decoding succeeds
+  }));
+  try {
+    let values = iface.decodeFunctionData(prefix, input);
+    decoded = _.mapValues(decoded, ({ param }) => ({
+      param,
+      value: values[param.name],
+    }));
+  } catch (ignore) {}
+  return { prefix, fn, decoded };
+}
+
+function useAbiHintProvider(address, call = null) {
+  let callRef = useRef(call);
+  let { source } = useContractSource({ address });
+  let monaco = useMonaco();
+
+  let { provider, didChangeHints } = useMemo(() => {
+    let didChangeHints = new monaco.Emitter();
+    let provider = {
+      onDidChangeInlayHints: didChangeHints.event,
+      provideInlayHints: (model, range, token) => {
+        let path = model.uri.path.substring(1);
+        let { files } = source || {};
+        let functions = files[path]?.info?.functions || {};
+        let functionHints = Object.keys(functions).map((sig) => ({
+          position: {
+            lineNumber: functions[sig].position.line,
+            column: functions[sig].position.column,
+          },
+          label: sig,
+          paddingLeft: false,
+          paddingRight: false,
+          // TODO
+          // command: {},
+        }));
+        let decodedCallHints = [];
+        if (callRef.current?.fn?.contractPath === path) {
+          decodedCallHints = Object.keys(callRef.current?.decoded).map(
+            (pName) => ({
+              position: {
+                lineNumber: callRef.current?.decoded[pName].param.position.line,
+                column:
+                  callRef.current?.decoded[pName].param.position.column +
+                  pName.length +
+                  1,
+              },
+              type: 2,
+              label: `= ${callRef.current?.decoded[pName].value}`,
+            })
+          );
+        }
+        let hints = functionHints.concat(decodedCallHints);
+        return {
+          hints,
+          dispose: () => {},
+        };
+      },
+      dispose: () => {},
+    };
+    return { provider, didChangeHints };
+  }, [monaco, source]);
+  useEffect(() => {
+    callRef.current = call;
+    didChangeHints.fire(null);
+  }, [call, didChangeHints]);
+  return { provider };
+}
+
+export default function SourceViewer({ address, initialSearchInput = "" }) {
+  let monaco = useMonaco();
+  if (!monaco) {
+    return null;
+  }
+  return (
+    <LoadedSourceViewer
+      address={address}
+      initialSearchInput={initialSearchInput}
+    />
+  );
+}
+
+function revealCall(editor, call) {
+  let line = call.fn.position.line;
+  editor.revealLineNearTop(line, 1);
+  editor.setSelection({
+    startLineNumber: line,
+    endLineNumber: line + 1,
+    startColumn: 1,
+    endColumn: 1,
+  });
+  editor.focus();
+}
+
+function pathUri(address, path) {
+  return `eth-source://${address}/${path}`;
+}
+
+function LGTMEditor({ address, selectedPath, call }) {
+  let { source } = useContractSource({ address });
+  let { provider: abiHintProvider } = useAbiHintProvider(address, call);
+  let callRef = useRef(call);
+  let editorRef = useRef(null);
+  useEffect(() => {
+    callRef.current = call;
+    if (call) {
+      if (
+        editorRef.current &&
+        editorRef.current.getModel()?.uri?.path === `/${call.fn.contractPath}`
+      ) {
+        revealCall(editorRef.current, call);
+      } // else it will be revealed when the editor model changes.
+    }
+    // eslint-disable-next-line
+  }, [call?.fn?.fragment]);
+  let selectedFile = source?.files[selectedPath];
+  return (
+    <Editor
+      height="100%"
+      options={{
+        readOnly: true,
+        glyphMargin: true,
+        minimap: {
+          size: "proportional",
+          scale: 2,
+          showSlider: "always",
+        },
+      }}
+      theme="lgtm-dark"
+      defaultLanguage={"sol"}
+      loading={<CircularProgress />}
+      path={pathUri(address, selectedPath)}
+      value={selectedFile ? selectedFile.content : ""}
+      beforeMount={(monaco) => {
+        monaco.editor.defineTheme("lgtm-dark", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [],
+          colors: {
+            "editorInlayHint.background": "#050300CC",
+            // "editorInlayHint.foreground": "#bcd7fa",
+            // "editor.selectionBackground": "#231d14",
+            // "editor.inactiveSelectionBackground": "#211A10",
+          },
+        });
+        monaco.languages.registerInlayHintsProvider("sol", abiHintProvider);
+        monaco.editor.onDidCreateEditor((editor) => {
+          editorRef.current = editor;
+          editor.onDidChangeModel(({ newModelUrl }) => {
+            if (newModelUrl?.path === `/${callRef.current?.fn?.contractPath}`) {
+              revealCall(editor, callRef.current);
+            }
+          });
+        });
+      }}
+    />
+  );
+}
+
+function useMainContractPath({ address }) {
+  let {
+    source: { files, mainContractName, contractPaths },
+  } = useContractSource({ address });
+  return (contractPaths || {})[mainContractName] || Object.keys(files).pop();
+}
+
+function SourceTabs({ address, selectedPath, onSelectedPath }) {
+  let mainContractPath = useMainContractPath({ address });
+  let tabList = useRef([mainContractPath]);
+  tabList.current = _.uniq(
+    [mainContractPath].concat(tabList.current).concat(selectedPath)
+  );
+  return (
+    <Tabs
+      value={selectedPath}
+      textColor="inherit"
+      onChange={(e, path) => onSelectedPath(path)}
+      variant="standard"
+    >
+      {tabList.current.map((tab) => (
+        <Tab
+          sx={{
+            pl: 1.5,
+            pr: tab !== mainContractPath ? 0 : 1.5,
+            pt: 0,
+            pb: 0,
+          }}
+          key={tab}
+          component="div"
+          label={
+            <Typography
+              sx={{
+                fontSize: 12,
+              }}
+            >
+              {tab.split("/").pop()}
+              {tab !== mainContractPath && (
+                <IconButton
+                  size="small"
+                  color="secondary"
+                  sx={{
+                    height: "100%",
+                    p: 0,
+                    pl: 1,
+                    pr: 1,
+                    fontSize: 12,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (tab === selectedPath) {
+                      onSelectedPath(mainContractPath);
+                    }
+                    tabList.current = _.without(tabList.current, tab);
+                  }}
+                >
+                  <CloseRounded sx={{ fontSize: 12 }} />
+                </IconButton>
+              )}
+            </Typography>
+          }
+          value={tab}
+        />
+      ))}
+    </Tabs>
+  );
+}
+
+function CallCardAddressParam({ address }) {
+  let addressName = useLookupAddress(address);
+  return (
+    <Chip
+      variant={"contained"}
+      size={"small"}
+      component="a"
+      clickable
+      target="_blank"
+      href={etherscanUrl({ address })}
+      label={
+        <Typography fontFamily={"monospace"} variant={"caption"}>
+          {addressName || address}
+        </Typography>
+      }
+    />
+  );
+}
+
+function CallCard({ call }) {
+  return (
+    <Card sx={{ textAlign: "left" }}>
+      <CardHeader title={call.fn.name} subheader={call.fn.contractName} />
+      <CardContent>
+        <Grid container spacing={1}>
+          {Object.keys(call.decoded || {}).map((pName) => (
+            <React.Fragment key={pName}>
+              <Grid item xs={1} textAlign={"right"}>
+                <Typography fontFamily={"monospace"} variant={"caption"}>
+                  {pName}
+                </Typography>
+              </Grid>
+              <Grid item xs={11}>
+                {call.decoded[pName].param.type === "address" ? ( // make addresses pretty
+                  <CallCardAddressParam address={call.decoded[pName].value} />
+                ) : (
+                  // default treatment
+                  <Typography fontFamily={"monospace"} variant={"caption"}>
+                    {`${call.decoded[pName].value}`}
+                  </Typography>
+                )}
+              </Grid>
+            </React.Fragment>
+          ))}
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadedSourceViewer({ address, initialSearchInput }) {
+  let [searchInput, setSearchInput] = useState(initialSearchInput);
+  let { source } = useContractSource({ address });
+  let { externals, iface } = useMemo(() => {
+    let externals = identifyExternal({ source });
+    let iface = new ethers.utils.Interface(source.ABI);
+    return { externals, iface };
+  }, [source]);
+  let [call, setCall] = useState(
+    decodeCall(iface, externals, initialSearchInput)
+  );
+  let mainContractPath = useMainContractPath({ address });
+  let [selectedPath, setSelectedPath] = useState(
+    call?.fn?.contractPath || mainContractPath
+  );
   useDocumentTitle(`${selectedPath.split("/").pop()} - ${address}`);
+
+  console.log({ call });
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
       <Grid
@@ -216,14 +538,38 @@ export default function SourceViewer({
           overflow: "scroll",
         }}
       >
-        <FileList
-          files={files}
-          onPathSelected={(path) => {
-            if (tabs.indexOf(path) === -1) {
-              setTabs(_.uniq([mainContractPath].concat([path]).concat(tabs)));
+        {/*<DecoderTextField*/}
+        {/*  address={address}*/}
+        {/*  onSelectedCall={(call) => setCall(call)}*/}
+        {/*  initialInput={""}*/}
+        {/*/>*/}
+        <TextField
+          size={"small"}
+          variant={"filled"}
+          color={"secondary"}
+          value={searchInput}
+          autoFocus
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            let call = decodeCall(iface, externals, e.target.value);
+            setCall(call);
+            if (call) {
+              setSelectedPath(call.fn.contractPath);
             }
-            setSelectedPath(path);
           }}
+          InputProps={{
+            sx: {
+              borderRadius: 0,
+            },
+          }}
+          fullWidth
+          multiline
+          helperText={call ? `Decoded: ${call?.fn?.name}` : ""}
+          maxRows={10}
+        />
+        <FileList
+          address={address}
+          onPathSelected={setSelectedPath}
           {...{ selectedPath }}
         />
       </Grid>
@@ -234,150 +580,22 @@ export default function SourceViewer({
           sx={{ height: "100%", width: "100%" }}
         >
           <Grid item sx={{ maxWidth: 400 }}>
-            <Tabs
-              value={selectedPath}
-              textColor="inherit"
-              onChange={(e, path) => setSelectedPath(path)}
-              variant="standard"
-            >
-              {tabs.map((tab) => (
-                <Tab
-                  sx={{
-                    pl: 1.5,
-                    pr: tab !== mainContractPath ? 0 : 1.5,
-                    pt: 0,
-                    pb: 0,
-                  }}
-                  key={tab}
-                  component="div"
-                  label={
-                    <Typography
-                      sx={{
-                        fontSize: 12,
-                      }}
-                    >
-                      {tab.split("/").pop()}
-                      {tab !== mainContractPath && (
-                        <IconButton
-                          size="small"
-                          color="secondary"
-                          sx={{
-                            height: "100%",
-                            p: 0,
-                            pl: 1,
-                            pr: 1,
-                            fontSize: 12,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (tab === selectedPath) {
-                              setSelectedPath(mainContractPath);
-                            }
-                            setTabs(_.without(tabs, tab));
-                          }}
-                        >
-                          <CloseRounded sx={{ fontSize: 12 }} />
-                        </IconButton>
-                      )}
-                    </Typography>
-                  }
-                  value={tab}
-                />
-              ))}
-            </Tabs>
+            <SourceTabs
+              address={address}
+              selectedPath={selectedPath}
+              onSelectedPath={setSelectedPath}
+            />
           </Grid>
+          {call?.fn?.contractPath === selectedPath && (
+            <Grid item>
+              <CallCard call={call} />
+            </Grid>
+          )}
           <Grid item xs={true}>
-            <Editor
-              height="100%"
-              options={{
-                readOnly: true,
-                glyphMargin: true,
-                minimap: {
-                  size: "proportional",
-                  scale: 2,
-                  showSlider: "always",
-                },
-              }}
-              theme="vs-dark"
-              defaultLanguage={"sol"}
-              loading={<CircularProgress />}
-              path={`eth-source://${address}/${selectedPath}`}
-              value={selectedFile ? selectedFile.content : ""}
-              beforeMount={(monaco) => {
-                monaco.languages.registerInlayHintsProvider("sol", {
-                  provideInlayHints: function (model, range, token) {
-                    let path = model.uri.path.substring(1);
-                    let functions = files[path]?.info?.functions || {};
-                    return {
-                      hints: Object.keys(functions).map((sig) => ({
-                        position: {
-                          lineNumber: functions[sig].position.line,
-                          column: functions[sig].position.column,
-                        },
-                        label: sig,
-                        paddingLeft: false,
-                        paddingRight: false,
-                      })),
-                      dispose: () => {},
-                    };
-                  },
-                });
-                // monaco.languages.registerCodeLensProvider("sol", {
-                //   provideCodeLenses: function (model, token) {
-                //     return {
-                //       lenses: [
-                //         {
-                //           range: {
-                //             startLineNumber: 1,
-                //             startColumn: 1,
-                //             endLineNumber: 2,
-                //             endColumn: 1,
-                //           },
-                //           id: "0x23b872dd",
-                //           command: {
-                //             id: "TODO",
-                //             title: "0x23b872dd\ntest 1234\nand yet another",
-                //             tooltip: "mintCommunitySale",
-                //           },
-                //         },
-                //       ],
-                //       dispose: () => {},
-                //     };
-                //   },
-                //   resolveCodeLens: function (model, codeLens, token) {
-                //     return codeLens;
-                //   },
-                // });
-                monaco.editor.onDidCreateEditor((editor) => {
-                  let isInitializing = true;
-                  editor.onDidChangeModel((e) => {
-                    if (isInitializing) {
-                      isInitializing = false;
-                      if (initialSelection) {
-                        editor.setSelection({
-                          ...initialSelection,
-                          startColumn: 1,
-                          endColumn: 1,
-                        });
-                        editor.revealLinesInCenter(
-                          initialSelection.startLineNumber,
-                          initialSelection.endLineNumber
-                        );
-                      }
-                    }
-                    window.location.hash = encodeFileHash({
-                      path: editor.getModel().uri.path,
-                      selection: editor.getSelection(),
-                    });
-                  });
-                  editor.onDidChangeCursorSelection((e) => {
-                    window.location.hash = encodeFileHash({
-                      path: editor.getModel().uri.path,
-                      selection: e.selection,
-                    });
-                  });
-                });
-              }}
+            <LGTMEditor
+              address={address}
+              selectedPath={selectedPath}
+              call={call}
             />
           </Grid>
         </Grid>
