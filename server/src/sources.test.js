@@ -2,55 +2,62 @@ const sources = require("./sources");
 const ethers = require("ethers");
 const fs = require("fs");
 const SIMPLE_CONTENT = fs.readFileSync(__dirname + "/test.Simple.sol", "utf8");
-const COMPLEX_COVEN_CONTENT = fs.readFileSync(
-  __dirname + "/test.Complex.Coven.sol",
+const COMPLEX_CONTENT = fs.readFileSync(
+  __dirname + "/test.Complex.sol",
   "utf8"
 );
-const COMPLEX_PROOF_CONTENT = fs.readFileSync(
-  __dirname + "/test.Complex.Proof.sol",
-  "utf8"
+const COVEN_ADDRESS = "0x5180db8F5c931aaE63c74266b211F580155ecac8";
+const LOOKSRARE_ADDRESS = "0x59728544B08AB483533076417FbBB2fD0B17CE3a";
+const PROOF_ADDRESS = "0x08D7C0242953446436F34b4C78Fe9da38c73668d";
+const SOURCES = Object.assign(
+  ...[COVEN_ADDRESS, LOOKSRARE_ADDRESS, PROOF_ADDRESS].map((address) => ({
+    [address]: require(`./test.Source.${address}.etherscan.json`),
+  }))
 );
-const ADDRESS_A =
-  "0xaaaaaaaa11223344112233441122334411223344112233441122334411223344";
+const FakeEtherscan = {
+  getSource: ({ address }) => ({
+    data: SOURCES[address],
+  }),
+};
 
-describe.only("gatherEtherscanSource", () => {
+describe("gatherEtherscanSource", () => {
   afterEach(() => {
     sources.resetRealEtherscan();
   });
   test("decoding etherscan response should work", async () => {
-    sources.setFakeEtherscan({
-      getSource: ({ address }) => ({
-        data: {
-          result: [
-            {
-              ABI: "[]", // etc
-              ContractName: "CryptoCoven",
-              ConstructorArguments: "", // etc
-              CompilerVersion: "",
-              SourceCode: JSON.stringify({
-                sources: {
-                  "contracts/CryptoCoven.sol": {
-                    content: COMPLEX_COVEN_CONTENT,
-                  },
-                },
-              }),
-            },
-          ],
-        },
-      }),
-    });
-    let source = await sources.gatherEtherscanSource(ADDRESS_A);
-    console.log(source);
+    sources.setFakeEtherscan(FakeEtherscan);
+    let source = await sources.gatherEtherscanSource(COVEN_ADDRESS);
     expect(source).toMatchObject({
       mainContractName: "CryptoCoven",
       files: {
         "contracts/CryptoCoven.sol": {
           info: {
-            functions: {
-              "0xa0712d68": {
-                name: "mint",
-                fragment: "mint(uint256)",
-                // etc.
+            contracts: {
+              CryptoCoven: {
+                bases: ["ERC721", "IERC2981", "Ownable", "ReentrancyGuard"],
+                position: {
+                  line: 41,
+                  column: 0,
+                },
+                functions: {
+                  // mint
+                  "0xa0712d68": {
+                    position: {
+                      line: 145,
+                      column: 4,
+                    },
+                    inputPositions: [
+                      {
+                        line: 145,
+                        column: 26,
+                      },
+                    ],
+                  },
+                  "0x8e4f8692": {}, // mintCommunitySale...
+                  "0xb391c508": {}, // claim...
+                  "0x714c5398": {}, // getBaseURI...
+                  // etc...
+                },
               },
             },
           },
@@ -58,173 +65,67 @@ describe.only("gatherEtherscanSource", () => {
       },
     });
   });
-});
-
-describe("buildFileInfo", () => {
-  test("contracts should be identified", async () => {
-    let info = sources.buildFileInfo("Simple.sol", SIMPLE_CONTENT);
-    // See test.Simple.sol
-    expect(info.contracts).toMatchObject({
-      Simple: {
-        position: {
-          line: 8,
-        },
-        bases: ["ERC721"],
-      },
-    });
-  });
-
-  test("functions should be identified", async () => {
-    let info = sources.buildFileInfo("Simple.sol", SIMPLE_CONTENT);
-    // See test.Simple.sol
-    expect(info.functions).toMatchObject({
-      "0xcf6d461e": {
-        name: "methodCee",
-        fragment: "methodCee(uint256)",
-        position: {
-          line: 19,
-          column: 60,
-        },
-        inputs: [
-          {
-            name: "uint256ParameterDee",
-            type: "uint256",
-            position: {
-              line: 19,
-              column: 22,
-            },
-          },
-        ],
-      },
-    });
-  });
-
-  test("complex Coven should be identified", async () => {
-    let info = sources.buildFileInfo("Coven.sol", COMPLEX_COVEN_CONTENT);
-    // See test.Complex.Coven.sol
-    expect(info.contracts).toMatchObject({
-      CryptoCoven: {
-        position: {
-          line: 41,
-        },
-        bases: ["ERC721", "IERC2981", "Ownable", "ReentrancyGuard"],
-      },
-    });
-    expect(info.functions).toMatchObject({
-      "0xa0712d68": {
-        name: "mint",
-        fragment: "mint(uint256)",
-      },
-      "0x8e4f8692": {
-        name: "mintCommunitySale",
-        fragment: "mintCommunitySale(uint8,bytes32[])",
-      },
-      "0xb391c508": {
-        name: "claim",
-        fragment: "claim(bytes32[])",
-      },
-      "0x714c5398": {
-        name: "getBaseURI",
-        fragment: "getBaseURI()",
-      },
-      "0x83c4c00d": {
-        name: "getLastTokenId",
-        fragment: "getLastTokenId()",
-      },
-      "0x55f804b3": {
-        name: "setBaseURI",
-        fragment: "setBaseURI(string)",
-      },
-      "0xe43082f7": {
-        name: "setIsOpenSeaProxyActive",
-        fragment: "setIsOpenSeaProxyActive(bool)",
-      },
-      "0x24f985e9": {
-        name: "setVerificationHash",
-        fragment: "setVerificationHash(string)",
-      },
-      "0x28cad13d": {
-        name: "setIsPublicSaleActive",
-        fragment: "setIsPublicSaleActive(bool)",
-      },
-      "0x0d3cf1f2": {
-        name: "setIsCommunitySaleActive",
-        fragment: "setIsCommunitySaleActive(bool)",
-      },
-      "0xe10c605f": {
-        name: "setCommunityListMerkleRoot",
-        fragment: "setCommunityListMerkleRoot(bytes32)",
-      },
-      "0x15bdebe2": {
-        name: "setClaimListMerkleRoot",
-        fragment: "setClaimListMerkleRoot(bytes32)",
-      },
-      "0x6c3a9b4a": {
-        name: "reserveForGifting",
-        fragment: "reserveForGifting(uint256)",
-      },
-      "0xdf9bbb82": {
-        name: "giftWitches",
-        fragment: "giftWitches(address[])",
-      },
-      "0x3ccfd60b": {
-        name: "withdraw",
-        fragment: "withdraw()",
-      },
-      "0x661bdaf7": {
-        name: "withdrawTokens",
-        fragment: "withdrawTokens(IERC20)",
-      },
-      "0x380c24df": {
-        name: "rollOverWitches",
-        fragment: "rollOverWitches(address[])",
-      },
-      "0x01ffc9a7": {
-        name: "supportsInterface",
-        fragment: "supportsInterface(bytes4)",
-      },
-      "0xe985e9c5": {
-        name: "isApprovedForAll",
-        fragment: "isApprovedForAll(address,address)",
-      },
-      "0xc87b56dd": {
-        name: "tokenURI",
-        fragment: "tokenURI(uint256)",
-      },
-      "0x2a55205a": {
-        name: "royaltyInfo",
-        fragment: "royaltyInfo(uint256,uint256)",
-      },
-    });
-  });
 
   test("complex Proof should be identified", async () => {
-    let info = sources.buildFileInfo("Proof.sol", COMPLEX_PROOF_CONTENT);
-    // See test.Complex.Coven.sol
-    expect(info.contracts).toMatchObject({
-      PROOFCollective: {
-        position: {
-          line: 11,
+    sources.setFakeEtherscan(FakeEtherscan);
+    let source = await sources.gatherEtherscanSource(PROOF_ADDRESS);
+    expect(source).toMatchObject({
+      mainContractName: "PROOFCollective",
+      files: {
+        "contracts/PROOFCollective.sol": {
+          info: {
+            contracts: {
+              PROOFCollective: {
+                bases: ["ERC721Common", "LinearDutchAuction"],
+                position: {
+                  line: 11,
+                },
+                functions: {
+                  // buy
+                  "0xa6f2ae3a": {
+                    position: { column: 4, line: 44 },
+                    inputPositions: [],
+                  },
+                  "0x30176e13": {}, // setBaseTokenURI ...
+                  "0xc87b56dd": {}, // tokenURI ...
+                  "0x18160ddd": {}, // totalSupply ...
+                  // ...
+                },
+              },
+            },
+          },
         },
-        bases: ["ERC721Common", "LinearDutchAuction"],
       },
     });
-    expect(info.functions).toMatchObject({
-      "0xa6f2ae3a": {
-        name: "buy",
-        fragment: "buy()",
-      },
-      "0x30176e13": {
-        name: "setBaseTokenURI",
-        fragment: "setBaseTokenURI(string)",
-      },
-      "0xc87b56dd": {
-        name: "tokenURI",
-        fragment: "tokenURI(uint256)",
-      },
-      "0x18160ddd": {
-        name: "totalSupply",
-        fragment: "totalSupply()",
+  });
+
+  test("complex LooksRare should be identified", async () => {
+    sources.setFakeEtherscan(FakeEtherscan);
+    let source = await sources.gatherEtherscanSource(LOOKSRARE_ADDRESS);
+    expect(source).toMatchObject({
+      mainContractName: "LooksRareExchange",
+      files: {
+        "contracts/LooksRareExchange.sol": {
+          info: {
+            contracts: {
+              LooksRareExchange: {
+                position: {
+                  line: 60,
+                },
+                bases: ["ILooksRareExchange", "ReentrancyGuard", "Ownable"],
+                functions: {
+                  "0xb4e4b296": {
+                    position: { column: 4, line: 186 },
+                    inputPositions: [
+                      { column: 39, line: 187 },
+                      { column: 39, line: 188 },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
   });

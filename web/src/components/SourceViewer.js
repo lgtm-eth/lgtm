@@ -24,6 +24,8 @@ import {
   Folder,
   Article,
   CloseRounded,
+  ExpandMore,
+  ExpandLess,
 } from "@mui/icons-material";
 import _ from "lodash";
 import { useDocumentTitle } from "../hooks";
@@ -193,28 +195,39 @@ function FileList({ address, onPathSelected, selectedPath = "" }) {
   );
 }
 
-function identifyExternal({ source }) {
-  let { files, mainContractName, contractPaths } = source;
+function keyPathsByContract(files) {
+  let contractPaths = {};
+  Object.keys(files).forEach((path) => {
+    Object.keys(files[path].info.contracts || {}).forEach(
+      (contract) => (contractPaths[contract] = path)
+    );
+  });
+  return contractPaths;
+}
 
+// This gathers all the external methods on the main contract.
+// It starts from the main contract itself, then includes all the base
+// contracts as well.
+function identifyExternal({ iface, source }) {
+  let { files, mainContractName } = source;
   let kNames = [mainContractName];
   let externals = {};
+  let contractPaths = keyPathsByContract(files);
   while (kNames.length) {
     let kName = kNames.pop();
     let kPath = contractPaths[kName];
-    // TODO: consider excluding interfaces
     let {
-      // TODO: move `functions` into the corresponding contract
-      //       to handle multiple contracts defined in the same file
-      info: { contracts, functions },
+      info: { contracts },
     } = files[kPath];
-    let { bases } = contracts[kName];
+    let { bases, functions } = contracts[kName];
     kNames = kNames.concat(bases || []);
     // NOTE: This .assign() sequence makes the child definition override the parent.
     //       (We start growing `externals` with the child's definitions first.)
     externals = Object.assign(
       {},
-      _.mapValues(functions, (fn) => ({
-        ...fn,
+      _.mapValues(functions, (fn, prefix) => ({
+        ...fn, // position, inputPositions
+        fragment: iface.getFunction(prefix),
         contractName: kName,
         contractPath: kPath,
       })),
@@ -224,24 +237,51 @@ function identifyExternal({ source }) {
   return externals;
 }
 
+function decodedValueToString(param, value) {
+  if (param.type === "tuple" && value.length === param.components?.length) {
+    value = `(${value
+      .map(
+        (v, i) =>
+          `${param.components[i].name} = ${decodedValueToString(
+            param.components[i],
+            v
+          )}`
+      )
+      .join(", ")})`;
+    // console.log({ value });
+  }
+  return `${value}`;
+}
+
 function decodeCall(iface, externals, input) {
   let prefix = (input || "").substring(0, 10) || "";
   let fn = externals[prefix];
   if (!fn) {
     return null;
   }
-  let decoded = _.mapValues(_.keyBy(fn.inputs, "name"), (param) => ({
-    param,
-    value: null, // will only be set if decoding succeeds
-  }));
+  let decoded = _.keyBy(
+    fn.fragment.inputs.map((param, i) => ({
+      param,
+      position: fn.inputPositions[i],
+      value: null, // will only be set if decoding succeeds
+    })),
+    ({ param }) => param.name
+  );
   try {
     let values = iface.decodeFunctionData(prefix, input);
-    decoded = _.mapValues(decoded, ({ param }) => ({
+    decoded = _.mapValues(decoded, ({ param, position }) => ({
       param,
+      position,
       value: values[param.name],
+      valueText: decodedValueToString(param, values[param.name]),
     }));
   } catch (ignore) {}
-  return { prefix, fn, decoded };
+  // console.log({ prefix, fn, decoded });
+  return {
+    prefix,
+    fn,
+    decoded,
+  };
 }
 
 function useAbiHintProvider(address, call = null) {
@@ -256,8 +296,14 @@ function useAbiHintProvider(address, call = null) {
       provideInlayHints: (model, range, token) => {
         let path = model.uri.path.substring(1);
         let { files } = source || {};
-        let functions = files[path]?.info?.functions || {};
-        let functionHints = Object.keys(functions).map((sig) => ({
+        let functions = Object.assign(
+          {},
+          ...Object.values(files[path]?.info?.contracts || {}).map(
+            (c) => c.functions
+          )
+        );
+        // console.log({ contracts: files[path]?.info?.contracts, functions });
+        let functionHints = Object.keys({ ...functions }).map((sig) => ({
           position: {
             lineNumber: functions[sig].position.line,
             column: functions[sig].position.column,
@@ -273,14 +319,14 @@ function useAbiHintProvider(address, call = null) {
           decodedCallHints = Object.keys(callRef.current?.decoded).map(
             (pName) => ({
               position: {
-                lineNumber: callRef.current?.decoded[pName].param.position.line,
+                lineNumber: callRef.current?.decoded[pName].position.line,
                 column:
-                  callRef.current?.decoded[pName].param.position.column +
+                  callRef.current?.decoded[pName].position.column +
                   pName.length +
                   1,
               },
               type: 2,
-              label: `= ${callRef.current?.decoded[pName].value}`,
+              label: `= ${callRef.current?.decoded[pName].valueText}`,
             })
           );
         }
@@ -393,9 +439,12 @@ function LGTMEditor({ address, selectedPath, call }) {
 
 function useMainContractPath({ address }) {
   let {
-    source: { files, mainContractName, contractPaths },
+    source: { files, mainContractName },
   } = useContractSource({ address });
-  return (contractPaths || {})[mainContractName] || Object.keys(files).pop();
+  return useMemo(() => {
+    let contractPaths = keyPathsByContract(files);
+    return (contractPaths || {})[mainContractName] || Object.keys(files).pop();
+  }, [files, mainContractName]);
 }
 
 function SourceTabs({ address, selectedPath, onSelectedPath }) {
@@ -478,30 +527,67 @@ function CallCardAddressParam({ address }) {
   );
 }
 
+function CallCardParam({ depth = 0, param, value }) {
+  let [expanded, setExpanded] = useState(!!value.length && value.length < 3);
+  return (
+    <>
+      {depth ? <Grid item xs={depth * 0.25} /> : null}
+      <Grid item xs={1.4} textAlign={"right"}>
+        <Typography
+          fontFamily={"monospace"}
+          variant={"caption"}
+          color={depth % 2 ? "secondary" : "inherit"}
+        >
+          {param.name}
+        </Typography>
+      </Grid>
+      <Grid item xs={10.6 - depth * 0.25}>
+        {param.type === "address" ? ( // make addresses pretty
+          <CallCardAddressParam address={value} />
+        ) : param.type === "tuple" ? (
+          <Chip
+            size="small"
+            icon={expanded ? <ExpandLess /> : <ExpandMore />}
+            label={`${value.length} components`}
+            onClick={() => setExpanded(!expanded)}
+          />
+        ) : (
+          // default treatment
+          <Typography fontFamily={"monospace"} variant={"caption"}>
+            {decodedValueToString(param, value)}
+          </Typography>
+        )}
+      </Grid>
+      {param.type === "tuple" && value.length && expanded
+        ? param.components.map((cParam, i) => (
+            <CallCardParam
+              key={cParam.name}
+              depth={depth + 1}
+              param={cParam}
+              value={value[i]}
+            />
+          ))
+        : null}
+    </>
+  );
+}
+
 function CallCard({ call }) {
   return (
     <Card sx={{ textAlign: "left" }}>
-      <CardHeader title={call.fn.name} subheader={call.fn.contractName} />
-      <CardContent>
-        <Grid container spacing={1}>
-          {Object.keys(call.decoded || {}).map((pName) => (
-            <React.Fragment key={pName}>
-              <Grid item xs={1} textAlign={"right"}>
-                <Typography fontFamily={"monospace"} variant={"caption"}>
-                  {pName}
-                </Typography>
-              </Grid>
-              <Grid item xs={11}>
-                {call.decoded[pName].param.type === "address" ? ( // make addresses pretty
-                  <CallCardAddressParam address={call.decoded[pName].value} />
-                ) : (
-                  // default treatment
-                  <Typography fontFamily={"monospace"} variant={"caption"}>
-                    {`${call.decoded[pName].value}`}
-                  </Typography>
-                )}
-              </Grid>
-            </React.Fragment>
+      <CardHeader
+        title={call.fn.fragment.name}
+        subheader={call.fn.contractName}
+      />
+      <CardContent sx={{ maxHeight: "30vh", overflow: "scroll" }}>
+        <Grid container rowSpacing={0} columnSpacing={1}>
+          {/* TODO: consider grouping v/r/s together */}
+          {call.fn.fragment.inputs.map((param, i) => (
+            <CallCardParam
+              key={param.name}
+              param={call.decoded[param.name].param}
+              value={call.decoded[param.name].value}
+            />
           ))}
         </Grid>
       </CardContent>
@@ -509,15 +595,20 @@ function CallCard({ call }) {
   );
 }
 
-function LoadedSourceViewer({ address, initialSearchInput }) {
-  let [searchInput, setSearchInput] = useState(initialSearchInput);
+function useContractInterface({ address }) {
   let { source } = useContractSource({ address });
   let { externals, iface } = useMemo(() => {
-    let externals = identifyExternal({ source });
     let iface = new ethers.utils.Interface(source.ABI);
+    let externals = identifyExternal({ iface, source });
     return { externals, iface };
   }, [source]);
-  let [call, setCall] = useState(
+  return { externals, iface };
+}
+
+function LoadedSourceViewer({ address, initialSearchInput }) {
+  let [searchInput, setSearchInput] = useState(initialSearchInput);
+  let { externals, iface } = useContractInterface({ address });
+  let [call, setCall] = useState(() =>
     decodeCall(iface, externals, initialSearchInput)
   );
   let mainContractPath = useMainContractPath({ address });
@@ -526,7 +617,7 @@ function LoadedSourceViewer({ address, initialSearchInput }) {
   );
   useDocumentTitle(`${selectedPath.split("/").pop()} - ${address}`);
 
-  console.log({ call });
+  // console.log({ call });
   return (
     <Grid container sx={{ flexGrow: 1 }} alignItems="stretch">
       <Grid
@@ -564,7 +655,7 @@ function LoadedSourceViewer({ address, initialSearchInput }) {
           }}
           fullWidth
           multiline
-          helperText={call ? `Decoded: ${call?.fn?.name}` : ""}
+          helperText={call ? `Decoded: ${call?.fn?.fragment?.name}` : ""}
           maxRows={10}
         />
         <FileList

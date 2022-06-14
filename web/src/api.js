@@ -4,10 +4,9 @@ import { useQuery } from "react-query";
 const API_BASE_URL =
   // prettier-ignore
   process.env.NODE_ENV === "development"
-    ? "https://lgtm.info/app/api" :
-    // ? "http://localhost:5001/lgtm-info-dev/us-central1/app/app/api" :
-    // ? "https://lgtm-info-dev.web.app/app/api" :
+    ? process.env.REACT_APP_DEV_API_BASE_URL :
       "/app/api";
+const STORAGE_BASE_URL = process.env.REACT_APP_STORAGE_BASE_URL;
 
 // These are the available API methods.
 // e.g. useApi.getSource({...})
@@ -68,7 +67,6 @@ function useApiMethod(name, method, request, nonce) {
   };
 }
 
-const STORAGE_BASE_URL = process.env.REACT_APP_STORAGE_BASE_URL;
 export function useAddressInfo({ address }) {
   let {
     isLoading,
