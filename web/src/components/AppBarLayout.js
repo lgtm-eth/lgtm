@@ -1,4 +1,11 @@
-import { AppBar, Box, Button, Toolbar, useTheme } from "@mui/material";
+import {
+  AppBar,
+  Box,
+  Button,
+  Container,
+  Toolbar,
+  useTheme,
+} from "@mui/material";
 import React, { useCallback, useState } from "react";
 // import WalletConnectProvider from "@walletconnect/web3-provider";
 // import Web3Modal from "web3modal";
@@ -112,13 +119,24 @@ function Footer() {
   );
 }
 
-export default function AppBarLayout({ children, hideFooter, showEtherscan }) {
+export function AppBarWithCenterpiece({ children }) {
+  return (
+    <AppBarLayout>
+      <Container sx={{ textAlign: "center", pt: "30vh" }}>{children}</Container>
+    </AppBarLayout>
+  );
+}
+
+export default function AppBarLayout({ children, hideFooter }) {
   let theme = useTheme();
   let [eyes, setEyes] = useState({ clientX: 0, clientY: 0 });
   // eslint-disable-next-line
   let updateEyes = useCallback(
     _.throttle(setEyes, 5, { leading: true, trailing: true }),
     [setEyes]
+  );
+  let showEtherscan = /\/(block|tx|address|token)\/.+/.test(
+    window?.location?.pathname || ""
   );
   return (
     <Box

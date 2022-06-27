@@ -1,11 +1,12 @@
-import AppBarLayout from "../components/AppBarLayout";
+import AppBarLayout, {
+  AppBarWithCenterpiece,
+} from "../components/AppBarLayout";
 import React from "react";
 import { Navigate, useSearchParams, useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
   CircularProgress,
-  Container,
   Grid,
   Typography,
 } from "@mui/material";
@@ -14,20 +15,10 @@ import { useAddressInfo } from "../api";
 import { useLookupAddress } from "../eth";
 import SourceViewer from "../components/SourceViewer";
 
-function LoadingAddress() {
-  return (
-    <AppBarLayout showEtherscan>
-      <Container sx={{ textAlign: "center", pt: "30vh" }}>
-        <CircularProgress />
-      </Container>
-    </AppBarLayout>
-  );
-}
-
 function WalletAddress({ address }) {
   // let theme = useTheme();
   return (
-    <AppBarLayout showEtherscan>
+    <AppBarLayout>
       <Grid container>
         <Grid item xs={0} md={4} />
         <Grid xs={12} md={4} item sx={{ pl: 3, pr: 3 }}>
@@ -85,15 +76,17 @@ export default function Address() {
   let [searchParams] = useSearchParams();
   let { isLoading, isError, info } = useAddressInfo({ address });
   if (isLoading) {
-    return <LoadingAddress />;
+    return (
+      <AppBarWithCenterpiece>
+        <CircularProgress />
+      </AppBarWithCenterpiece>
+    );
   }
   if (isError) {
     return (
-      <AppBarLayout showEtherscan>
-        <Container sx={{ textAlign: "center", pt: "30vh" }}>
-          <Error />
-        </Container>
-      </AppBarLayout>
+      <AppBarWithCenterpiece>
+        <Error />
+      </AppBarWithCenterpiece>
     );
   }
   if (info.redirect) {
@@ -111,7 +104,7 @@ export default function Address() {
   if (info.contract) {
     let initialSearchInput = searchParams?.get("q");
     return (
-      <AppBarLayout hideFooter showEtherscan>
+      <AppBarLayout hideFooter>
         <SourceViewer
           address={address}
           initialSearchInput={initialSearchInput || ""}
