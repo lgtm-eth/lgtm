@@ -526,7 +526,7 @@ function CallCardAddressParam({ address }) {
 }
 
 function CallCardParam({ depth = 0, param, value }) {
-  let [expanded, setExpanded] = useState(!!value.length && value.length < 3);
+  let [expanded, setExpanded] = useState(!!value?.length && value.length < 3);
   return (
     <>
       {depth ? <Grid item xs={depth * 0.25} /> : null}
@@ -540,13 +540,13 @@ function CallCardParam({ depth = 0, param, value }) {
         </Typography>
       </Grid>
       <Grid item xs={10.6 - depth * 0.25}>
-        {param.type === "address" ? ( // make addresses pretty
+        {value === null ? null : param.type === "address" ? ( // make addresses pretty
           <CallCardAddressParam address={value} />
         ) : param.type === "tuple" ? (
           <Chip
             size="small"
             icon={expanded ? <ExpandLess /> : <ExpandMore />}
-            label={`${value.length} components`}
+            label={`${value?.length} components`}
             onClick={() => setExpanded(!expanded)}
           />
         ) : (
@@ -556,7 +556,7 @@ function CallCardParam({ depth = 0, param, value }) {
           </Typography>
         )}
       </Grid>
-      {param.type === "tuple" && value.length && expanded
+      {param.type === "tuple" && value?.length && expanded
         ? param.components.map((cParam, i) => (
             <CallCardParam
               key={cParam.name}
