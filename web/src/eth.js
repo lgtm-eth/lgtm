@@ -57,3 +57,15 @@ export function useLookupAddress(address) {
   );
   return data;
 }
+
+export function useTransaction(hash) {
+  return useQuery(
+    ["getTransaction", hash],
+    () => provider().getTransaction(hash),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      staleTime: Infinity,
+    }
+  );
+}
