@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
   CircularProgress,
   Collapse,
   Grid,
@@ -9,23 +13,19 @@ import {
   ListItemIcon,
   ListItemText,
   styled,
+  Tab,
+  Tabs,
+  TextField,
   Typography,
   useTheme,
-  Tabs,
-  Tab,
-  TextField,
-  Card,
-  CardContent,
-  CardHeader,
-  Chip,
 } from "@mui/material";
 import {
-  ChevronRight,
-  Folder,
   Article,
+  ChevronRight,
   CloseRounded,
-  ExpandMore,
   ExpandLess,
+  ExpandMore,
+  Folder,
 } from "@mui/icons-material";
 import _ from "lodash";
 import { useDocumentTitle } from "../hooks";
@@ -34,6 +34,7 @@ import { useContractSource } from "../api";
 import { ethers } from "ethers";
 import { useLookupAddress } from "../eth";
 import { etherscanUrl } from "../utils/etherscan";
+
 loader.config({
   paths: {
     vs: process.env.PUBLIC_URL + "/vs",
@@ -169,9 +170,6 @@ function FileList({ address, onPathSelected, selectedPath = "" }) {
     source: { files },
   } = useContractSource({ address });
   let root = useMemo(() => buildFileTree({ files }), [files]);
-  let dirs = _.orderBy(root.children, "name").filter(
-    ({ type }) => type === "directory"
-  );
   return (
     <FileListNav
       dense
@@ -182,11 +180,11 @@ function FileList({ address, onPathSelected, selectedPath = "" }) {
         flexGrow: 1,
       }}
     >
-      {dirs.map((dir) => (
+      {_.orderBy(root.children, ["type", "name"]).map((node) => (
         <FileListItem
-          node={dir}
-          key={dir.path}
-          path={dir.path}
+          node={node}
+          key={node.path}
+          path={node.path}
           onPathSelected={onPathSelected}
           selectedPath={selectedPath}
         />
