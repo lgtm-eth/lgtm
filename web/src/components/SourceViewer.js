@@ -32,8 +32,7 @@ import { useDocumentTitle } from "../hooks";
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import { useContractSource } from "../api";
 import { ethers } from "ethers";
-import { useLookupAddress } from "../eth";
-import { etherscanUrl } from "../utils/etherscan";
+import AddressChip from "./AddressChip";
 
 loader.config({
   paths: {
@@ -506,26 +505,14 @@ function SourceTabs({ address, selectedPath, onSelectedPath }) {
   );
 }
 
-function CallCardAddressParam({ address }) {
-  let addressName = useLookupAddress(address);
-  return (
-    <Chip
-      variant={"contained"}
-      size={"small"}
-      component="a"
-      clickable
-      target="_blank"
-      href={etherscanUrl({ address })}
-      label={
-        <Typography fontFamily={"monospace"} variant={"caption"}>
-          {addressName || address}
-        </Typography>
-      }
-    />
-  );
+function ellipsizeText(s, length = 24) {
+  if (s?.length && s.length < length) {
+    return s;
+  }
+  return s.substring(0, 24 - "⋯ ".length) + "⋯ ";
 }
 
-function CallCardParam({ depth = 0, param, value }) {
+function CallCardParam({ depth = 0, param, value, prefix = null }) {
   let [expanded, setExpanded] = useState(!!value?.length && value.length < 3);
   return (
     <>
@@ -540,13 +527,38 @@ function CallCardParam({ depth = 0, param, value }) {
         </Typography>
       </Grid>
       <Grid item xs={10.6 - depth * 0.25}>
+        {prefix}
         {value === null ? null : param.type === "address" ? ( // make addresses pretty
-          <CallCardAddressParam address={value} />
+          <AddressChip address={value} />
         ) : param.type === "tuple" ? (
           <Chip
             size="small"
             icon={expanded ? <ExpandLess /> : <ExpandMore />}
-            label={`${value?.length} components`}
+            label={`${value?.length} components${
+              expanded
+                ? ""
+                : ` (${
+                    param.components
+                      .slice(0, 3)
+                      .map((p) => ellipsizeText(p.name))
+                      .join(", ") + (param.components.length > 3 ? ", ..." : "")
+                  })`
+            }`}
+            onClick={() => setExpanded(!expanded)}
+          />
+        ) : param.type.endsWith("[]") ? (
+          <Chip
+            size="small"
+            icon={expanded ? <ExpandLess /> : <ExpandMore />}
+            label={`${value?.length} items${
+              expanded
+                ? ""
+                : ` [${ellipsizeText(
+                    value
+                      ?.map((v) => decodedValueToString(param.arrayChildren, v))
+                      .join(", ")
+                  )}]`
+            }`}
             onClick={() => setExpanded(!expanded)}
           />
         ) : (
@@ -556,23 +568,52 @@ function CallCardParam({ depth = 0, param, value }) {
           </Typography>
         )}
       </Grid>
-      {param.type === "tuple" && value?.length && expanded
-        ? param.components.map((cParam, i) => (
+      {param.type === "tuple" && value?.length && expanded ? (
+        <>
+          {param.components.map((cParam, i) => (
             <CallCardParam
               key={cParam.name}
               depth={depth + 1}
               param={cParam}
               value={value[i]}
             />
-          ))
-        : null}
+          ))}
+          <Grid item xs={12} sx={{ height: 14 }} />
+        </>
+      ) : null}
+      {param.type.endsWith("[]") && value?.length && expanded ? (
+        <>
+          {value.map((v, i) => (
+            <CallCardParam
+              key={`array-${param.name}-${i}`}
+              prefix={
+                <Typography
+                  variant="code"
+                  sx={{
+                    width: 18,
+                    fontSize: 10,
+                    mr: 0.25,
+                    display: "inline-block",
+                  }}
+                >
+                  [{i}]
+                </Typography>
+              }
+              depth={depth}
+              param={param.arrayChildren}
+              value={v}
+            />
+          ))}
+          <Grid item xs={12} sx={{ height: 14 }} />
+        </>
+      ) : null}
     </>
   );
 }
 
 function CallCard({ call }) {
   return (
-    <Card sx={{ textAlign: "left" }}>
+    <Card sx={{ textAlign: "left", borderRadius: 0 }} elevation={10}>
       <CardHeader
         title={call.fn.fragment.name}
         subheader={call.fn.contractName}
