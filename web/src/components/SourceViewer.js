@@ -213,10 +213,8 @@ function identifyExternal({ iface, source }) {
   while (kNames.length) {
     let kName = kNames.pop();
     let kPath = contractPaths[kName];
-    let {
-      info: { contracts },
-    } = files[kPath];
-    let { bases, functions } = contracts[kName];
+    let contracts = files[kPath]?.info?.contracts || {};
+    let { bases, functions } = contracts[kName] || {};
     kNames = kNames.concat(bases || []);
     // NOTE: This .assign() sequence makes the child definition override the parent.
     //       (We start growing `externals` with the child's definitions first.)
@@ -230,6 +228,28 @@ function identifyExternal({ iface, source }) {
       })),
       externals
     );
+  }
+
+  // When analysis failed to locate any contracts (e.g. because it's a vyper contract we can't parse)
+  // then default to locate all ABI functions on the main contract line 1, column 1.
+  // This lets us at least decode calls and manually locate methods by name.
+  if (
+    Object.keys(contractPaths).length === 0 &&
+    Object.keys(files).length === 1
+  ) {
+    let mainContractPath = Object.keys(files)[0];
+    let topLine = { line: 1, column: 0 };
+    _.forEach(iface.functions, (fragment) => {
+      let prefix = iface.getSighash(fragment);
+      externals[prefix] = {
+        fragment,
+        contractName: mainContractName,
+        contractPath: mainContractPath,
+        // Locate the method and all inputs on the top line of the file.
+        position: topLine,
+        inputPositions: _.times(fragment.inputs.length, () => topLine),
+      };
+    });
   }
   return externals;
 }
